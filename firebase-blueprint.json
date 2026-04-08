@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task created by the user.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The deadline for the task."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "unassigned"],
+          "description": "The priority of the task."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["work", "personal", "study", "other"],
+          "description": "The category of the task."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed"],
+          "description": "The current status of the task."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns the task."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the task was created."
+        }
+      },
+      "required": ["title", "priority", "category", "status", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Collection of user tasks."
+    }
+  }
+}
