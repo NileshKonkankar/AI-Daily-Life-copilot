@@ -65,7 +65,7 @@ export function TaskForm() {
           </div>
           
           <div className="space-y-2 flex flex-col">
-            <label className="text-sm font-medium">Deadline</label>
+            <label className="text-sm font-medium">Due Date</label>
             <Popover>
               <PopoverTrigger render={
                 <Button
