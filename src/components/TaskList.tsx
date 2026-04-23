@@ -7,12 +7,17 @@ import { CalendarIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useState } from 'react';
+
 interface TaskListProps {
   tasks: Task[];
   prioritizedIds?: string[];
 }
 
 export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
   // Sort tasks: if prioritizedIds exist, use that order. Otherwise, pending first, then by creation date.
   const sortedTasks = [...tasks].sort((a, b) => {
     if (prioritizedIds && prioritizedIds.length > 0) {
@@ -75,7 +80,10 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                 }}
                 className="mt-1"
               />
-              <div className="flex-1 min-w-0">
+              <div 
+                className="flex-1 min-w-0 cursor-pointer rounded-md hover:bg-muted/30 p-1 -m-1 transition-colors"
+                onClick={() => setSelectedTask(task)}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   {rank && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">#{rank}</Badge>}
                   <h4 className={`font-medium truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
@@ -114,6 +122,62 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
         );
       })}
       </AnimatePresence>
+
+      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Task Details</DialogTitle>
+            <DialogDescription>
+              A deeper look at your task.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedTask && (
+            <div className="space-y-6 pt-4">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Title</h4>
+                <p className="text-base font-semibold">{selectedTask.title}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
+                  <Badge variant={selectedTask.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
+                    {selectedTask.status}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Priority</h4>
+                  <Badge variant="outline" className={`capitalize ${getPriorityColor(selectedTask.priority)}`}>
+                    {selectedTask.priority}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Category</h4>
+                  <Badge variant="secondary" className="capitalize">
+                    {selectedTask.category}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Due Date</h4>
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <CalendarIcon size={14} className="text-muted-foreground" />
+                    {selectedTask.deadline ? format(selectedTask.deadline, 'PPP') : 'No due date'}
+                  </div>
+                </div>
+                
+                <div className="col-span-2">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Created At</h4>
+                  <p className="text-sm text-foreground">{format(selectedTask.createdAt, 'PPP p')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

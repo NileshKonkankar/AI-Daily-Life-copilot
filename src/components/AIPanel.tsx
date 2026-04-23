@@ -21,8 +21,17 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
 
   const pendingTasks = tasks.filter(t => t.status === 'pending');
 
+  const clearAIResults = () => {
+    setNextAction(null);
+    setDailySummary(null);
+    setPrioritizationResult(null);
+    onPrioritize([]);
+  };
+
   const handlePrioritize = async () => {
     if (pendingTasks.length === 0) return;
+    setNextAction(null);
+    setDailySummary(null);
     setLoading('prioritize');
     try {
       const result = await prioritizeTasks(tasks);
@@ -39,6 +48,9 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
 
   const handleNextAction = async () => {
     if (pendingTasks.length === 0) return;
+    setPrioritizationResult(null);
+    setDailySummary(null);
+    onPrioritize([]);
     setLoading('nextAction');
     try {
       const result = await getNextBestAction(tasks);
@@ -52,6 +64,9 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
 
   const handleDailySummary = async () => {
     if (tasks.length === 0) return;
+    setPrioritizationResult(null);
+    setNextAction(null);
+    onPrioritize([]);
     setLoading('summary');
     try {
       const result = await generateDailySummary(tasks);
@@ -70,10 +85,17 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
   return (
     <Card className="h-full flex flex-col border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <BrainCircuit className="h-5 w-5" />
-          AI Copilot
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <BrainCircuit className="h-5 w-5" />
+            AI Copilot
+          </CardTitle>
+          {(nextAction || prioritizationResult || dailySummary) && (
+            <Button variant="ghost" size="sm" onClick={clearAIResults} className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground">
+              Clear Results
+            </Button>
+          )}
+        </div>
         <CardDescription>Intelligent insights for your tasks</CardDescription>
       </CardHeader>
       
