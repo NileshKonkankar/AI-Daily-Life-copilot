@@ -6,8 +6,15 @@ export interface Task {
   title: string;
   deadline: Date | null;
   priority: 'low' | 'medium' | 'high' | 'unassigned';
-  category: 'work' | 'personal' | 'study' | 'other';
+  category: string;
   status: 'pending' | 'completed';
+  userId: string;
+  createdAt: Date;
+}
+
+export interface Category {
+  id?: string;
+  name: string;
   userId: string;
   createdAt: Date;
 }
@@ -101,6 +108,53 @@ export const subscribeToTasks = (callback: (tasks: Task[]) => void) => {
       } as Task;
     });
     callback(tasks);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.LIST, path);
+  });
+};
+
+export const addCategory = async (name: string) => {
+  if (!auth.currentUser) throw new Error("Not authenticated");
+  
+  const path = 'categories';
+  try {
+    const newCategory = {
+      name,
+      userId: auth.currentUser.uid,
+      createdAt: Timestamp.now(),
+    };
+    const docRef = await addDoc(collection(db, path), newCategory);
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+};
+
+export const deleteCategory = async (categoryId: string) => {
+  const path = `categories/${categoryId}`;
+  try {
+    await deleteDoc(doc(db, 'categories', categoryId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const subscribeToCategories = (callback: (categories: Category[]) => void) => {
+  if (!auth.currentUser) return () => {};
+  
+  const path = 'categories';
+  const q = query(collection(db, path), where("userId", "==", auth.currentUser.uid));
+  
+  return onSnapshot(q, (snapshot) => {
+    const categories = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate(),
+      } as Category;
+    });
+    callback(categories);
   }, (error) => {
     handleFirestoreError(error, OperationType.LIST, path);
   });

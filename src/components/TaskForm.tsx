@@ -3,11 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { addTask, Task } from '../services/taskService';
+import { addTask, Task, subscribeToCategories, Category, addCategory } from '../services/taskService';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, startOfDay } from 'date-fns';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -18,6 +18,29 @@ export function TaskForm() {
   const [priority, setPriority] = useState<Task['priority']>('unassigned');
   const [category, setCategory] = useState<Task['category']>('work');
   const [loading, setLoading] = useState(false);
+  
+  const [customCategories, setCustomCategories] = useState<Category[]>([]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  React.useEffect(() => {
+    const unsub = subscribeToCategories(setCustomCategories);
+    return () => unsub();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (newCategoryName.trim()) {
+      try {
+        await addCategory(newCategoryName.trim());
+        setCategory(newCategoryName.trim());
+        setIsAddingCategory(false);
+        setNewCategoryName('');
+        toast.success('Category added');
+      } catch (error) {
+        toast.error('Failed to add category');
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,18 +130,48 @@ export function TaskForm() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
-              <Select value={category} onValueChange={(v: any) => setCategory(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="work">Work</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
-                  <SelectItem value="study">Study</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Category</label>
+                {!isAddingCategory && (
+                  <Button type="button" variant="ghost" size="sm" className="h-6 text-xs px-2 -mr-2 text-muted-foreground" onClick={() => setIsAddingCategory(true)}>
+                    <Plus size={12} className="mr-1" /> New
+                  </Button>
+                )}
+              </div>
+              
+              {isAddingCategory ? (
+                <div className="flex items-center gap-2">
+                  <Input 
+                    className="h-9 text-sm" 
+                    placeholder="Enter category name..." 
+                    value={newCategoryName} 
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                    autoFocus
+                  />
+                  <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
+                    <Check size={14}/>
+                  </Button>
+                  <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground" onClick={() => { setIsAddingCategory(false); setNewCategoryName(''); }}>
+                    <X size={14} />
+                  </Button>
+                </div>
+              ) : (
+                <Select value={category} onValueChange={(v: any) => setCategory(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="work">Work</SelectItem>
+                    <SelectItem value="personal">Personal</SelectItem>
+                    <SelectItem value="study">Study</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                    {customCategories.map(c => (
+                      <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 

@@ -21,8 +21,7 @@
         },
         "category": {
           "type": "string",
-          "enum": ["work", "personal", "study", "other"],
-          "description": "The category of the task."
+          "description": "The category of the task (now supports custom string names)."
         },
         "status": {
           "type": "string",
@@ -40,12 +39,37 @@
         }
       },
       "required": ["title", "priority", "category", "status", "userId", "createdAt"]
+    },
+    "Category": {
+      "title": "Task Category",
+      "description": "A custom user-defined category.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns the category."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the category was created."
+        }
+      },
+      "required": ["name", "userId", "createdAt"]
     }
   },
   "firestore": {
     "/tasks/{taskId}": {
       "schema": { "$ref": "#/entities/Task" },
       "description": "Collection of user tasks."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Collection of custom user task categories."
     }
   }
 }

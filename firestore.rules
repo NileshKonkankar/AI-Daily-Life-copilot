@@ -70,7 +70,7 @@ service cloud.firestore {
       
       let validTitle = data.title is string && data.title.size() > 0 && data.title.size() <= 200;
       let validPriority = data.priority in ['low', 'medium', 'high', 'unassigned'];
-      let validCategory = data.category in ['work', 'personal', 'study', 'other'];
+      let validCategory = data.category is string && data.category.size() > 0 && data.category.size() <= 64;
       let validStatus = data.status in ['pending', 'completed'];
       let validUserId = data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128;
       let validCreatedAt = data.createdAt is timestamp;
@@ -80,6 +80,18 @@ service cloud.firestore {
       return hasRequired && onlyAllowed && validTitle && validPriority && validCategory && validStatus && validUserId && validCreatedAt && validDeadline;
     }
 
+    function isValidCategory(data) {
+      let allowedFields = ['name', 'userId', 'createdAt'];
+      let hasRequired = hasRequiredFields(allowedFields);
+      let onlyAllowed = hasOnlyAllowedFields(allowedFields);
+      
+      let validName = data.name is string && data.name.size() > 0 && data.name.size() <= 64;
+      let validUserId = data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128;
+      let validCreatedAt = data.createdAt is timestamp;
+      
+      return hasRequired && onlyAllowed && validName && validUserId && validCreatedAt;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -87,6 +99,13 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && isValidTask(request.resource.data) && request.resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && isDocOwner() && isValidTask(request.resource.data) && uidNotModified() && areImmutableFieldsUnchanged(['createdAt', 'userId']);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCategory(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && isDocOwner() && isValidCategory(request.resource.data) && uidNotModified() && areImmutableFieldsUnchanged(['createdAt', 'userId']);
       allow delete: if isAuthenticated() && isDocOwner();
     }
   }
