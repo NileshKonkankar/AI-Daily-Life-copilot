@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -44,10 +44,19 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300 border-gray-200 dark:border-gray-800';
+    }
+  };
+
+  const PriorityIcon = ({ priority, className }: { priority: string, className?: string }) => {
+    switch (priority) {
+      case 'high': return <ArrowUp className={className} />;
+      case 'medium': return <ArrowRight className={className} />;
+      case 'low': return <ArrowDown className={className} />;
+      default: return null;
     }
   };
 
@@ -96,7 +105,8 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                     {task.category}
                   </Badge>
                   {task.priority !== 'unassigned' && (
-                    <Badge variant="outline" className={`capitalize text-xs font-normal border-transparent ${getPriorityColor(task.priority)}`}>
+                    <Badge variant="outline" className={`capitalize text-xs font-medium flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
+                      <PriorityIcon priority={task.priority} className="w-3 h-3" />
                       {task.priority}
                     </Badge>
                   )}
@@ -149,7 +159,8 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                 
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Priority</h4>
-                  <Badge variant="outline" className={`capitalize ${getPriorityColor(selectedTask.priority)}`}>
+                  <Badge variant="outline" className={`capitalize flex items-center gap-1 w-fit ${getPriorityColor(selectedTask.priority)}`}>
+                    <PriorityIcon priority={selectedTask.priority} className="w-3 h-3" />
                     {selectedTask.priority}
                   </Badge>
                 </div>
