@@ -75,28 +75,46 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
               animate={{ 
                 opacity: task.status === 'completed' ? 0.6 : 1,
                 scale: task.status === 'completed' ? 0.98 : 1,
-                y: 0
+                y: 0,
+                backgroundColor: task.status === 'completed' ? 'var(--muted)' : 'var(--card)'
               }}
               exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-              transition={{ duration: 0.2 }}
+              whileHover={{ scale: task.status === 'completed' ? 0.98 : 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 300,
+                damping: 25,
+                opacity: { duration: 0.2 }
+              }}
             >
               <Card className={`p-4 transition-all ${isPrioritized && rank === 1 ? 'border-primary shadow-md' : ''}`}>
             <div className="flex items-start gap-3">
-              <Checkbox 
-                checked={task.status === 'completed'} 
-                onCheckedChange={(checked) => {
-                  updateTask(task.id!, { status: checked ? 'completed' : 'pending' });
-                }}
-                className="mt-1"
-              />
+              <motion.div 
+                whileTap={{ scale: 0.8 }}
+                className="mt-1 flex items-center"
+              >
+                <Checkbox 
+                  checked={task.status === 'completed'} 
+                  onCheckedChange={(checked) => {
+                    updateTask(task.id!, { status: checked ? 'completed' : 'pending' });
+                  }}
+                />
+              </motion.div>
               <div 
                 className="flex-1 min-w-0 cursor-pointer rounded-md hover:bg-muted/30 p-1 -m-1 transition-colors"
                 onClick={() => setSelectedTask(task)}
               >
                 <div className="flex items-center gap-2 mb-1">
                   {rank && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">#{rank}</Badge>}
-                  <h4 className={`font-medium truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                  <h4 className={`relative font-medium truncate inline-block ${task.status === 'completed' ? 'text-muted-foreground' : ''}`}>
                     {task.title}
+                    <motion.div
+                      initial={false}
+                      animate={{ width: task.status === 'completed' ? '100%' : '0%' }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                      className="absolute left-0 top-[55%] h-[1.5px] bg-muted-foreground/60 rounded-full"
+                    />
                   </h4>
                 </div>
                 

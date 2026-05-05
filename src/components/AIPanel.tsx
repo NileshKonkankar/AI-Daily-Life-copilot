@@ -99,12 +99,12 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
         <CardDescription>Intelligent insights for your tasks</CardDescription>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        <div className="grid grid-cols-3 gap-2">
+      <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden px-3 sm:px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-col h-auto py-3 gap-1 bg-background"
+            className="flex-row sm:flex-col h-auto py-2 sm:py-3 gap-2 sm:gap-1 bg-background justify-start sm:justify-center"
             onClick={handlePrioritize}
             disabled={loading !== null || pendingTasks.length === 0}
           >
@@ -114,7 +114,7 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-col h-auto py-3 gap-1 bg-background"
+            className="flex-row sm:flex-col h-auto py-2 sm:py-3 gap-2 sm:gap-1 bg-background justify-start sm:justify-center"
             onClick={handleNextAction}
             disabled={loading !== null || pendingTasks.length === 0}
           >
@@ -124,7 +124,7 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-col h-auto py-3 gap-1 bg-background"
+            className="flex-row sm:flex-col h-auto py-2 sm:py-3 gap-2 sm:gap-1 bg-background justify-start sm:justify-center"
             onClick={handleDailySummary}
             disabled={loading !== null || tasks.length === 0}
           >
@@ -133,9 +133,9 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
           </Button>
         </div>
 
-        <ScrollArea className="flex-1 -mx-4 px-4">
+        <ScrollArea className="flex-1 -mx-3 sm:-mx-6 px-3 sm:px-6">
           {loading && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-center">
               <Loader2 className="h-8 w-8 animate-spin mb-4 text-primary" />
               <p className="text-sm">AI is thinking...</p>
             </div>
@@ -154,10 +154,10 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
                   <Target className="h-5 w-5 text-red-500" />
                   <h3 className="font-semibold">Do This Next</h3>
                 </div>
-                <div className="p-3 bg-primary/10 text-primary font-medium rounded-md mb-3 border border-primary/20">
+                <div className="p-3 bg-primary/10 text-primary font-medium rounded-md mb-3 border border-primary/20 break-words">
                   {getTaskTitle(nextAction.id)}
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   <span className="font-medium text-foreground">Why: </span>
                   {nextAction.whyItMattersNow}
                 </p>
@@ -175,12 +175,12 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
                 {prioritizationResult.map((item, idx) => (
                   <div key={item.id} className="bg-background p-3 rounded-lg border shadow-sm text-sm">
                     <div className="flex items-start gap-2 mb-1">
-                      <Badge variant={item.urgency === 'high' ? 'destructive' : item.urgency === 'medium' ? 'default' : 'secondary'}>
+                      <Badge variant={item.urgency === 'high' ? 'destructive' : item.urgency === 'medium' ? 'default' : 'secondary'} className="shrink-0">
                         #{idx + 1}
                       </Badge>
-                      <span className="font-medium">{getTaskTitle(item.id)}</span>
+                      <span className="font-medium break-words leading-tight">{getTaskTitle(item.id)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 pl-8 border-l-2 ml-2 border-muted">
+                    <p className="text-xs text-muted-foreground mt-2 pl-3 sm:pl-8 border-l-2 ml-2 border-muted leading-relaxed">
                       {item.reasoning}
                     </p>
                   </div>
@@ -190,7 +190,7 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
           )}
 
           {!loading && dailySummary && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <CalendarDays className="h-5 w-5 text-blue-500" />
                 <h3 className="font-semibold">Daily Summary</h3>
@@ -199,23 +199,31 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
               <div className="bg-background p-4 rounded-lg border shadow-sm space-y-4 text-sm">
                 <div>
                   <h4 className="font-medium mb-1">Plan for the day</h4>
-                  <p className="text-muted-foreground">{dailySummary.planForTheDay}</p>
+                  <p className="text-muted-foreground leading-relaxed italic border-l-2 pl-3 border-primary/20">
+                    "{dailySummary.planForTheDay}"
+                  </p>
                 </div>
                 
                 {dailySummary.timeSuggestions?.length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-1">Time Suggestions</h4>
-                    <ul className="list-disc pl-4 text-muted-foreground space-y-1">
-                      {dailySummary.timeSuggestions.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                    <h4 className="font-medium mb-1 flex items-center gap-1">
+                      <Target className="h-3 w-3 text-red-400" />
+                      Time Suggestions
+                    </h4>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-2 mt-1">
+                      {dailySummary.timeSuggestions.map((s: string, i: number) => <li key={i} className="leading-tight">{s}</li>)}
                     </ul>
                   </div>
                 )}
                 
                 {dailySummary.focusRecommendations?.length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-1">Focus Tips</h4>
-                    <ul className="list-disc pl-4 text-muted-foreground space-y-1">
-                      {dailySummary.focusRecommendations.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                    <h4 className="font-medium mb-1 flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-amber-400" />
+                      Focus Tips
+                    </h4>
+                    <ul className="list-disc pl-5 text-muted-foreground space-y-2 mt-1">
+                      {dailySummary.focusRecommendations.map((s: string, i: number) => <li key={i} className="leading-tight">{s}</li>)}
                     </ul>
                   </div>
                 )}
@@ -223,9 +231,9 @@ export function AIPanel({ tasks, onPrioritize }: AIPanelProps) {
                 {dailySummary.insights?.length > 0 && (
                   <div>
                     <h4 className="font-medium mb-1">AI Insights</h4>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       {dailySummary.insights.map((s: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        <Badge key={i} variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 text-[10px] sm:text-xs">
                           {s}
                         </Badge>
                       ))}
