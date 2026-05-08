@@ -10,6 +10,8 @@ export interface Task {
   status: 'pending' | 'completed';
   userId: string;
   createdAt: Date;
+  notes?: string;
+  subTasks?: { id: string; title: string; completed: boolean }[];
 }
 
 export interface Category {

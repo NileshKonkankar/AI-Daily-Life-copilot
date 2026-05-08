@@ -64,9 +64,8 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidTask(data) {
-      let allowedFields = ['title', 'deadline', 'priority', 'category', 'status', 'userId', 'createdAt'];
-      let hasRequired = hasRequiredFields(['title', 'priority', 'category', 'status', 'userId', 'createdAt']);
-      let onlyAllowed = hasOnlyAllowedFields(allowedFields);
+      let allowedFields = ['title', 'deadline', 'priority', 'category', 'status', 'userId', 'createdAt', 'notes', 'subTasks'];
+      let hasRequired = data.keys().hasAll(['title', 'priority', 'category', 'status', 'userId', 'createdAt']);
       
       let validTitle = data.title is string && data.title.size() > 0 && data.title.size() <= 200;
       let validPriority = data.priority in ['low', 'medium', 'high', 'unassigned'];
@@ -76,8 +75,10 @@ service cloud.firestore {
       let validCreatedAt = data.createdAt is timestamp;
       
       let validDeadline = !('deadline' in data) || data.deadline == null || data.deadline is timestamp;
+      let validNotes = !('notes' in data) || (data.notes is string && data.notes.size() <= 5000);
+      let validSubTasks = !('subTasks' in data) || data.subTasks is list;
 
-      return hasRequired && onlyAllowed && validTitle && validPriority && validCategory && validStatus && validUserId && validCreatedAt && validDeadline;
+      return hasRequired && validTitle && validPriority && validCategory && validStatus && validUserId && validCreatedAt && validDeadline && validNotes && validSubTasks;
     }
 
     function isValidCategory(data) {

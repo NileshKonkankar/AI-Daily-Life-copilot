@@ -36,6 +36,23 @@
           "type": "string",
           "format": "date-time",
           "description": "When the task was created."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes for the task."
+        },
+        "subTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "completed": { "type": "boolean" }
+            },
+            "required": ["id", "title", "completed"]
+          },
+          "description": "List of sub-tasks for the task."
         }
       },
       "required": ["title", "priority", "category", "status", "userId", "createdAt"]

@@ -3,9 +3,13 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
+import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown, ListTodo, FileText, Plus, X, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useState } from 'react';
@@ -17,6 +21,47 @@ interface TaskListProps {
 
 export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [newSubTask, setNewSubTask] = useState('');
+
+  const calculateProgress = (task: Task) => {
+    if (!task.subTasks || task.subTasks.length === 0) return task.status === 'completed' ? 100 : 0;
+    const completed = task.subTasks.filter(st => st.completed).length;
+    return Math.round((completed / task.subTasks.length) * 100);
+  };
+
+  const addSubTask = async () => {
+    if (!selectedTask || !newSubTask.trim()) return;
+    const subTasks = selectedTask.subTasks || [];
+    const updatedSubTasks = [...subTasks, { id: Math.random().toString(36).substr(2, 9), title: newSubTask.trim(), completed: false }];
+    
+    await updateTask(selectedTask.id!, { subTasks: updatedSubTasks });
+    setSelectedTask({ ...selectedTask, subTasks: updatedSubTasks });
+    setNewSubTask('');
+  };
+
+  const toggleSubTask = async (subTaskId: string) => {
+    if (!selectedTask || !selectedTask.subTasks) return;
+    const updatedSubTasks = selectedTask.subTasks.map(st => 
+      st.id === subTaskId ? { ...st, completed: !st.completed } : st
+    );
+    
+    await updateTask(selectedTask.id!, { subTasks: updatedSubTasks });
+    setSelectedTask({ ...selectedTask, subTasks: updatedSubTasks });
+  };
+
+  const removeSubTask = async (subTaskId: string) => {
+    if (!selectedTask || !selectedTask.subTasks) return;
+    const updatedSubTasks = selectedTask.subTasks.filter(st => st.id !== subTaskId);
+    
+    await updateTask(selectedTask.id!, { subTasks: updatedSubTasks });
+    setSelectedTask({ ...selectedTask, subTasks: updatedSubTasks });
+  };
+
+  const updateNotes = async (notes: string) => {
+    if (!selectedTask) return;
+    await updateTask(selectedTask.id!, { notes });
+    setSelectedTask({ ...selectedTask, notes });
+  };
 
   // Sort tasks: if prioritizedIds exist, use that order. Otherwise, pending first, then by creation date.
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -128,6 +173,17 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                       {task.priority}
                     </Badge>
                   )}
+                  {task.notes && (
+                    <div className="flex items-center gap-1" title="Has notes">
+                      <FileText size={12} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  {task.subTasks && task.subTasks.length > 0 && (
+                    <div className="flex items-center gap-1" title={`${task.subTasks.filter(st => st.completed).length}/${task.subTasks.length} sub-tasks`}>
+                      <ListTodo size={12} className="text-muted-foreground" />
+                      <span className="text-[10px] font-medium">{task.subTasks.filter(st => st.completed).length}/{task.subTasks.length}</span>
+                    </div>
+                  )}
                   {task.deadline && (
                     <div className="flex items-center gap-1">
                       <CalendarIcon size={12} />
@@ -135,6 +191,21 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                     </div>
                   )}
                 </div>
+                {task.priority === 'high' && (task.subTasks && task.subTasks.length > 0) && (
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-medium text-muted-foreground">
+                      <span>Progress</span>
+                      <span>{calculateProgress(task)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${calculateProgress(task)}%` }}
+                        className="h-full bg-primary"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <Button 
                 variant="ghost" 
@@ -161,7 +232,8 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
           </DialogHeader>
           
           {selectedTask && (
-            <div className="space-y-6 pt-4">
+            <ScrollArea className="max-h-[80vh] px-1">
+            <div className="space-y-6 pt-4 pb-4">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-1">Title</h4>
                 <p className="text-base font-semibold">{selectedTask.title}</p>
@@ -197,13 +269,79 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                     {selectedTask.deadline ? format(selectedTask.deadline, 'PPP') : 'No due date'}
                   </div>
                 </div>
-                
-                <div className="col-span-2">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Created At</h4>
-                  <p className="text-sm text-foreground">{format(selectedTask.createdAt, 'PPP p')}</p>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <ListTodo className="h-4 w-4" />
+                  Sub-tasks
+                </h4>
+                <div className="space-y-2">
+                  <AnimatePresence mode="popLayout">
+                    {selectedTask.subTasks?.map((st) => (
+                      <motion.div 
+                        key={st.id}
+                        layout
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="flex items-center gap-2 group p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-border transition-all"
+                      >
+                        <Checkbox 
+                          checked={st.completed}
+                          onCheckedChange={() => toggleSubTask(st.id)}
+                        />
+                        <span className={`text-sm flex-1 ${st.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          {st.title}
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={() => removeSubTask(st.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  
+                  <div className="flex gap-2 mt-2">
+                    <Input 
+                      placeholder="Add a sub-task..." 
+                      value={newSubTask}
+                      onChange={(e) => setNewSubTask(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addSubTask()}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" onClick={addSubTask} className="h-8 px-2">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Notes
+                </h4>
+                <Textarea 
+                  placeholder="Add details, links, or context..."
+                  value={selectedTask.notes || ''}
+                  onChange={(e) => updateNotes(e.target.value)}
+                  className="min-h-[100px] text-sm resize-none"
+                />
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Created At</h4>
+                <p className="text-sm text-foreground">{format(selectedTask.createdAt, 'PPP p')}</p>
+              </div>
             </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
