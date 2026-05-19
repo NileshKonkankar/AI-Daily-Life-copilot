@@ -22,6 +22,7 @@ interface TaskListProps {
 export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newSubTask, setNewSubTask] = useState('');
+  const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
 
   const calculateProgress = (task: Task) => {
     if (!task.subTasks || task.subTasks.length === 0) return task.status === 'completed' ? 100 : 0;
@@ -121,7 +122,12 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                 opacity: task.status === 'completed' ? 0.6 : 1,
                 scale: task.status === 'completed' ? 0.98 : 1,
                 y: 0,
-                backgroundColor: task.status === 'completed' ? 'var(--muted)' : 'var(--card)'
+                backgroundColor: task.status === 'completed' ? 'var(--muted)' : 'var(--card)',
+                transition: {
+                  type: "spring",
+                  stiffness: task.status === 'completed' ? 400 : 300,
+                  damping: task.status === 'completed' ? 15 : 25
+                }
               }}
               exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
               whileHover={{ scale: task.status === 'completed' ? 0.98 : 1.01 }}
@@ -143,8 +149,38 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                   checked={task.status === 'completed'} 
                   onCheckedChange={(checked) => {
                     updateTask(task.id!, { status: checked ? 'completed' : 'pending' });
+                    if (checked) {
+                      setJustCompletedId(task.id!);
+                      setTimeout(() => setJustCompletedId(null), 800);
+                    }
                   }}
                 />
+                <AnimatePresence>
+                  {justCompletedId === task.id && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {[...Array(6)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ x: 0, y: 0, scale: 0 }}
+                          animate={{ 
+                            x: (Math.random() - 0.5) * 50, 
+                            y: (Math.random() - 0.5) * 50, 
+                            scale: [0, 1, 0],
+                            opacity: [0, 1, 0]
+                          }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="absolute left-1/2 top-1/2 w-1.5 h-1.5 bg-primary rounded-full"
+                        />
+                      ))}
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 2, opacity: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute inset-0 rounded-full border-2 border-primary"
+                      />
+                    </div>
+                  )}
+                </AnimatePresence>
               </motion.div>
               <div 
                 className="flex-1 min-w-0 cursor-pointer rounded-md hover:bg-muted/30 p-1 -m-1 transition-colors"
