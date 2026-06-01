@@ -8,7 +8,7 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 
 export default function App() {
@@ -16,7 +16,31 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        return savedTheme;
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
   const location = useLocation();
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -131,6 +155,19 @@ export default function App() {
             <h1 className="font-semibold text-lg hidden sm:block">{getPageTitle()}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleTheme} 
+              className="text-muted-foreground hover:text-foreground transition-colors duration-200" 
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5 text-amber-500 animate-in spin-in-12 duration-200" />
+              ) : (
+                <Moon className="h-5 w-5 text-slate-700 animate-in spin-in-12 duration-200" />
+              )}
+            </Button>
             <Button variant="ghost" size="icon" className="text-muted-foreground">
               <Bell className="h-5 w-5" />
             </Button>
@@ -204,14 +241,66 @@ export default function App() {
 
               {/* Settings Route */}
               <Route path="/settings" element={
-                <div className="flex flex-col items-center justify-center py-20 text-center border rounded-xl bg-background border-dashed">
-                  <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mb-4">
-                    <Settings className="h-10 w-10 text-muted-foreground" />
+                <div className="space-y-6 max-w-2xl py-2">
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      Manage visual appearance, notifications, and personal preferences for AI Copilot.
+                    </p>
                   </div>
-                  <h3 className="text-xl font-semibold">Settings Overview</h3>
-                  <p className="text-muted-foreground max-w-sm mt-2">
-                    Preferences for AI behavior, notifications, and integration settings will live here.
-                  </p>
+
+                  <div className="bg-background rounded-xl border shadow-sm p-6 space-y-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Theme & Appearance</h3>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        Choose your interface visual style. Dark mode relaxes eye strain in low-light environments.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button 
+                          variant={theme === 'light' ? 'default' : 'outline'} 
+                          className="flex-1 justify-start gap-3 h-14 px-4"
+                          onClick={() => setTheme('light')}
+                        >
+                          <Sun className="h-5 w-5 shrink-0" />
+                          <div className="text-left">
+                            <p className="font-semibold text-sm leading-none">Light Mode</p>
+                            <p className="text-xs text-muted-foreground mt-1">Bright, clean, high-contrast</p>
+                          </div>
+                        </Button>
+                        <Button 
+                          variant={theme === 'dark' ? 'default' : 'outline'} 
+                          className="flex-1 justify-start gap-3 h-14 px-4"
+                          onClick={() => setTheme('dark')}
+                        >
+                          <Moon className="h-5 w-5 shrink-0" />
+                          <div className="text-left">
+                            <p className="font-semibold text-sm leading-none">Dark Mode</p>
+                            <p className="text-xs text-muted-foreground mt-1">Deep, eye-friendly palette</p>
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-medium mb-3">Account Details</h3>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <div className="flex justify-between border-b py-2 flex-wrap gap-2">
+                          <span>User Account</span>
+                          <span className="font-medium text-foreground">{user.email}</span>
+                        </div>
+                        <div className="flex justify-between border-b py-2">
+                          <span>Status</span>
+                          <span className="font-medium text-green-500 flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Authenticated
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-2">
+                          <span>Environment</span>
+                          <span className="font-mono text-xs text-foreground bg-muted px-1.5 py-0.5 rounded">Active Container</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               } />
             </Routes>

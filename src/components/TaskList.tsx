@@ -23,6 +23,48 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newSubTask, setNewSubTask] = useState('');
   const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+
+  const toggleSelectTask = (taskId: string) => {
+    setSelectedTaskIds(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId) 
+        : [...prev, taskId]
+    );
+  };
+
+  const handleToggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTaskIds(sortedTasks.map(t => t.id!).filter(Boolean));
+    } else {
+      setSelectedTaskIds([]);
+    }
+  };
+
+  const bulkMarkCompleted = async () => {
+    if (selectedTaskIds.length === 0) return;
+    const promises = selectedTaskIds.map(id => updateTask(id, { status: 'completed' }));
+    await Promise.all(promises);
+    setSelectedTaskIds([]);
+  };
+
+  const bulkMarkPending = async () => {
+    if (selectedTaskIds.length === 0) return;
+    const promises = selectedTaskIds.map(id => updateTask(id, { status: 'pending' }));
+    await Promise.all(promises);
+    setSelectedTaskIds([]);
+  };
+
+  const bulkDelete = async () => {
+    if (selectedTaskIds.length === 0) return;
+    const promises = selectedTaskIds.map(id => deleteTask(id));
+    await Promise.all(promises);
+    setSelectedTaskIds([]);
+  };
+
+  const clearSelection = () => {
+    setSelectedTaskIds([]);
+  };
 
   const calculateProgress = (task: Task) => {
     if (!task.subTasks || task.subTasks.length === 0) return task.status === 'completed' ? 100 : 0;
@@ -108,6 +150,82 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
 
   return (
     <div className="space-y-3">
+      {sortedTasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted/10 border rounded-lg">
+          <div className="flex items-center gap-2">
+            <Checkbox 
+              id="select-all-header"
+              checked={sortedTasks.length > 0 && selectedTaskIds.length === sortedTasks.length}
+              onCheckedChange={(checked) => handleToggleSelectAll(!!checked)}
+            />
+            <label htmlFor="select-all-header" className="cursor-pointer font-medium text-xs select-none">
+              Select All ({sortedTasks.length} tasks)
+            </label>
+          </div>
+          {selectedTaskIds.length > 0 && (
+            <span className="text-xs font-semibold text-primary">
+              {selectedTaskIds.length} of {sortedTasks.length} selected
+            </span>
+          )}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {selectedTaskIds.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                  With {selectedTaskIds.length} select{selectedTaskIds.length === 1 ? 'ed' : 'ions'}:
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={bulkMarkCompleted}
+                  className="h-8 text-xs font-medium flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  Complete
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={bulkMarkPending}
+                  className="h-8 text-xs font-medium flex items-center gap-1.5"
+                >
+                  <ListTodo className="h-3.5 w-3.5 text-blue-500" />
+                  Pending
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={bulkDelete}
+                  className="h-8 text-xs font-medium flex items-center gap-1.5"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearSelection}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="popLayout">
         {sortedTasks.map((task, index) => {
           const isPrioritized = prioritizedIds && prioritizedIds.indexOf(task.id!) !== -1;
@@ -141,6 +259,14 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
             >
               <Card className={`p-4 transition-all ${isPrioritized && rank === 1 ? 'border-primary shadow-md' : ''}`}>
             <div className="flex items-start gap-3">
+              <div className="mt-1 flex items-center shrink-0">
+                <Checkbox 
+                  checked={selectedTaskIds.includes(task.id!)} 
+                  onCheckedChange={() => toggleSelectTask(task.id!)}
+                  className="border-muted-foreground/35 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  title="Select task for bulk actions"
+                />
+              </div>
               <motion.div 
                 whileTap={{ scale: 0.8 }}
                 className="mt-1 flex items-center"
