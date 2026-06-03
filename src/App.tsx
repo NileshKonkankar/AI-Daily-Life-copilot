@@ -10,6 +10,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -95,6 +96,21 @@ export default function App() {
 
   const pendingCount = tasks.filter(t => t.status === 'pending').length;
   const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const totalCount = pendingCount + completedCount;
+  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const COLORS = theme === 'dark' 
+    ? { completed: '#10b981', pending: '#6366f1', empty: '#3f3f46' }
+    : { completed: '#10b981', pending: '#3b82f6', empty: '#e4e4e7' };
+
+  const chartData = totalCount > 0 
+    ? [
+        { name: 'Completed', value: completedCount, color: COLORS.completed },
+        { name: 'Pending', value: pendingCount, color: COLORS.pending }
+      ]
+    : [
+        { name: 'No Tasks', value: 1, color: COLORS.empty }
+      ];
 
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -189,10 +205,112 @@ export default function App() {
                     <div>
                       <h2 className="text-2xl font-bold tracking-tight">Welcome back!</h2>
                       <p className="text-muted-foreground text-sm mt-1">
-                        You have {pendingCount} pending tasks and {completedCount} completed tasks.
+                        Here is a quick overview of your personal workspace and task status distribution.
                       </p>
                     </div>
                     <TaskForm />
+                  </div>
+
+                  {/* Overview Cards Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Metrics Card */}
+                    <div className="bg-background rounded-xl border shadow-sm p-6 flex flex-col justify-between">
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completion Progress</span>
+                        <div className="flex items-baseline gap-2 mt-2">
+                          <span className="text-4xl font-extrabold tracking-tight">{completionRate}%</span>
+                          <span className="text-sm text-muted-foreground">completed</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Keep it up! You've completed <strong>{completedCount}</strong> out of <strong>{totalCount}</strong> tasks.
+                        </p>
+                      </div>
+                      
+                      <div className="mt-6 space-y-2">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="text-muted-foreground">System Progress</span>
+                          <span className="text-foreground">{completedCount}/{totalCount} Tasks</span>
+                        </div>
+                        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out" 
+                            style={{ width: `${completionRate}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Recharts Pie Chart Card */}
+                    <div className="bg-background rounded-xl border shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Task Status Distribution</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">Live</span>
+                      </div>
+                      
+                      <div className="flex-1 flex items-center justify-center min-h-[140px] mt-2">
+                        {totalCount === 0 ? (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-muted-foreground">No tasks available</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">Add tasks to see distribution</p>
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-around gap-4">
+                            {/* Chart Container */}
+                            <div className="w-[140px] h-[140px] relative shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={45}
+                                    outerRadius={60}
+                                    paddingAngle={3}
+                                    dataKey="value"
+                                  >
+                                    {chartData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip 
+                                    contentStyle={{ 
+                                      backgroundColor: 'var(--background)', 
+                                      border: '1px solid var(--border)',
+                                      borderRadius: '8px',
+                                      fontSize: '12px',
+                                      color: 'var(--foreground)'
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              {/* Central text for Donut Chart */}
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-lg font-bold">{totalCount}</span>
+                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Tasks</span>
+                              </div>
+                            </div>
+
+                            {/* Legend Details */}
+                            <div className="flex flex-col gap-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS.completed }} />
+                                <div className="text-left">
+                                  <p className="text-xs font-semibold leading-none">{completedCount} Completed</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}% of total</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS.pending }} />
+                                <div className="text-left">
+                                  <p className="text-xs font-semibold leading-none">{pendingCount} Pending</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{totalCount > 0 ? Math.round((pendingCount / totalCount) * 100) : 0}% of total</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
