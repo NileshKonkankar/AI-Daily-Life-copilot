@@ -12,15 +12,34 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { startOfDay } from 'date-fns';
 import { useState } from 'react';
 
 interface TaskListProps {
   tasks: Task[];
   prioritizedIds?: string[];
+  selectedTask?: Task | null;
+  onSelectTask?: (task: Task | null) => void;
 }
 
-export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+export function TaskList({ 
+  tasks, 
+  prioritizedIds, 
+  selectedTask: propSelectedTask, 
+  onSelectTask: propSetSelectedTask 
+}: TaskListProps) {
+  const [localSelectedTask, setLocalSelectedTask] = useState<Task | null>(null);
+  
+  const selectedTask = propSelectedTask !== undefined ? propSelectedTask : localSelectedTask;
+  const setSelectedTask = (task: Task | null) => {
+    if (propSetSelectedTask) {
+      propSetSelectedTask(task);
+    } else {
+      setLocalSelectedTask(task);
+    }
+  };
   const [newSubTask, setNewSubTask] = useState('');
   const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -426,10 +445,43 @@ export function TaskList({ tasks, prioritizedIds }: TaskListProps) {
                 
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Due Date</h4>
-                  <div className="flex items-center gap-2 text-sm text-foreground">
-                    <CalendarIcon size={14} className="text-muted-foreground" />
-                    {selectedTask.deadline ? format(selectedTask.deadline, 'PPP') : 'No due date'}
-                  </div>
+                  <Popover>
+                    <PopoverTrigger render={
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal text-xs h-9 mt-1"
+                      >
+                        <CalendarIcon className="mr-1.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        {selectedTask.deadline ? format(selectedTask.deadline, "PPP") : <span className="text-muted-foreground">No due date</span>}
+                      </Button>
+                    } />
+                    <PopoverContent className="w-auto p-0 z-[100] scale-95" align="start">
+                      <div className="p-1 border-b text-center bg-muted/20">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-[10px] h-7 font-bold text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={async () => {
+                            await updateTask(selectedTask.id!, { deadline: null });
+                            setSelectedTask({ ...selectedTask, deadline: null });
+                          }}
+                        >
+                          Clear Due Date
+                        </Button>
+                      </div>
+                      <Calendar
+                        mode="single"
+                        selected={selectedTask.deadline || undefined}
+                        onSelect={async (newDate) => {
+                          const updatedDate = newDate || null;
+                          await updateTask(selectedTask.id!, { deadline: updatedDate });
+                          setSelectedTask({ ...selectedTask, deadline: updatedDate });
+                        }}
+                        disabled={(date) => date < startOfDay(new Date())}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 

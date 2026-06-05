@@ -8,15 +8,21 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarView } from './components/CalendarView';
+import { Badge } from '@/components/ui/badge';
+import { motion } from 'motion/react';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
@@ -98,6 +104,54 @@ export default function App() {
   const completedCount = tasks.filter(t => t.status === 'completed').length;
   const totalCount = pendingCount + completedCount;
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Compute upcoming/urgent tasks
+  const notifications = (() => {
+    const list: { id: string; type: 'overdue' | 'today' | 'tomorrow'; title: string; task: Task; dateText: string }[] = [];
+    const now = new Date();
+    const todayStart = startOfDay(now);
+
+    tasks.forEach(task => {
+      if (task.status === 'completed' || !task.deadline) return;
+
+      const dl = new Date(task.deadline);
+      if (isBefore(dl, todayStart) && !isToday(dl)) {
+        list.push({
+          id: `overdue-${task.id}`,
+          type: 'overdue',
+          title: task.title,
+          task,
+          dateText: `Overdue (due ${format(dl, 'MMM d')})`
+        });
+      } else if (isToday(dl)) {
+        list.push({
+          id: `today-${task.id}`,
+          type: 'today',
+          title: task.title,
+          task,
+          dateText: `Due Today`
+        });
+      } else if (isTomorrow(dl)) {
+        list.push({
+          id: `tomorrow-${task.id}`,
+          type: 'tomorrow',
+          title: task.title,
+          task,
+          dateText: `Due Tomorrow`
+        });
+      }
+    });
+
+    // Sort: overdue first, then today, then tomorrow
+    return list.sort((a, b) => {
+      const types = { overdue: 0, today: 1, tomorrow: 2 };
+      return types[a.type] - types[b.type];
+    });
+  })();
+
+  const overdueCount = notifications.filter(n => n.type === 'overdue').length;
+  const todayCount = notifications.filter(n => n.type === 'today').length;
+  const urgentCount = overdueCount + todayCount;
 
   const COLORS = theme === 'dark' 
     ? { completed: '#10b981', pending: '#6366f1', empty: '#3f3f46' }
@@ -184,9 +238,75 @@ export default function App() {
                 <Moon className="h-5 w-5 text-slate-700 animate-in spin-in-12 duration-200" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
-              <Bell className="h-5 w-5" />
-            </Button>
+            
+            <Popover>
+              <PopoverTrigger render={
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground transition-colors relative", 
+                    urgentCount > 0 && "text-foreground"
+                  )}
+                  title="Notifications & Upcoming Deadlines"
+                >
+                  <Bell className={cn("h-5 w-5", urgentCount > 0 && "animate-pulse")} />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm animate-in zoom-in-50 duration-200">
+                      {notifications.length}
+                    </span>
+                  )}
+                </Button>
+              } />
+              <PopoverContent className="w-80 p-0 shadow-xl rounded-xl border z-50 bg-background overflow-hidden" align="end">
+                <div className="p-4 bg-muted/20 border-b flex items-center justify-between animate-in fade-in-50 duration-150">
+                  <span className="text-sm font-semibold flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-primary" /> Notifications
+                  </span>
+                  <Badge variant="secondary" className="px-1.5 py-0.5 text-[10px] font-semibold">
+                    {notifications.length} alerts
+                  </Badge>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto divide-y">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 px-4 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500/80" />
+                      <div>
+                        <p className="font-semibold text-foreground">You are all caught up!</p>
+                        <p className="text-[10px] mt-0.5">No overdue or upcoming task deadlines.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    notifications.map(notif => (
+                      <div 
+                        key={notif.id} 
+                        onClick={() => setActiveTask(notif.task)}
+                        className="p-3.5 hover:bg-muted/50 cursor-pointer transition-colors text-left flex items-start gap-3"
+                      >
+                        <div className={cn(
+                          "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                          notif.type === 'overdue' ? 'bg-red-500' :
+                          notif.type === 'today' ? 'bg-amber-500' : 'bg-primary'
+                        )} />
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-tight text-foreground truncate">{notif.title}</p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Clock size={10} className="shrink-0" />
+                            <span className={cn(
+                              "font-medium",
+                              notif.type === 'overdue' && "text-red-500 font-semibold"
+                            )}>
+                              {notif.dateText}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Button variant="ghost" size="sm" onClick={logout} className="gap-2 text-muted-foreground hover:text-foreground">
               <LogOut size={16} />
               <span className="hidden sm:inline-block">Sign out</span>
@@ -210,6 +330,43 @@ export default function App() {
                     </div>
                     <TaskForm />
                   </div>
+
+                  {urgentCount > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center justify-between gap-4 p-4 bg-amber-500/10 border border-amber-500/25 rounded-xl text-amber-800 dark:text-amber-300 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg shrink-0">
+                          <Bell className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Upcoming & Urgent Deadlines</p>
+                          <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+                            You have {overdueCount > 0 ? `${overdueCount} overdue task${overdueCount > 1 ? 's' : ''}` : ''}
+                            {overdueCount > 0 && todayCount > 0 ? ' and ' : ''}
+                            {todayCount > 0 ? `${todayCount} task${todayCount > 1 ? 's' : ''} due today` : ''}. Take actions to complete them.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs shrink-0 border-amber-300/35 bg-transparent text-amber-800 dark:text-amber-300 hover:bg-amber-500/10"
+                          onClick={() => {
+                            const firstUrgent = notifications[0]?.task;
+                            if (firstUrgent) {
+                              setActiveTask(firstUrgent);
+                            }
+                          }}
+                        >
+                          Review Urgent Tasks
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* Overview Cards Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -317,7 +474,12 @@ export default function App() {
                     {/* Left Column: Tasks */}
                     <div className="xl:col-span-8 space-y-6">
                       <div className="bg-background rounded-xl border shadow-sm p-1">
-                        <TaskList tasks={tasks} prioritizedIds={prioritizedIds} />
+                        <TaskList 
+                          tasks={tasks} 
+                          prioritizedIds={prioritizedIds} 
+                          selectedTask={activeTask}
+                          onSelectTask={setActiveTask}
+                        />
                       </div>
                     </div>
 
@@ -339,21 +501,32 @@ export default function App() {
                     <TaskForm />
                   </div>
                   <div className="bg-background rounded-xl border shadow-sm p-1 max-w-4xl">
-                    <TaskList tasks={tasks} />
+                    <TaskList 
+                      tasks={tasks} 
+                      selectedTask={activeTask}
+                      onSelectTask={setActiveTask}
+                    />
                   </div>
                 </div>
               } />
 
               {/* Calendar Route */}
               <Route path="/calendar" element={
-                <div className="flex flex-col items-center justify-center py-20 text-center border rounded-xl bg-background border-dashed">
-                  <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <CalendarIcon className="h-10 w-10 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold">Calendar Integration Coming Soon</h3>
-                  <p className="text-muted-foreground max-w-sm mt-2">
-                    A visual calendar view of all your deadlines and time-blocks is currently in development.
-                  </p>
+                <div className="space-y-6">
+                  <CalendarView 
+                    tasks={tasks} 
+                    onSelectTask={setActiveTask}
+                  />
+                  {/* Shared Details overlay */}
+                  {activeTask && (
+                    <div className="hidden">
+                      <TaskList 
+                        tasks={tasks} 
+                        selectedTask={activeTask}
+                        onSelectTask={setActiveTask}
+                      />
+                    </div>
+                  )}
                 </div>
               } />
 
