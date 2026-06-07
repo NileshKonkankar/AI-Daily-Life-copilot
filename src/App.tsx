@@ -8,7 +8,7 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarView } from './components/CalendarView';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -23,6 +24,8 @@ export default function App() {
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unassigned'>('all');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
@@ -496,13 +499,81 @@ export default function App() {
               {/* Tasks Route */}
               <Route path="/tasks" element={
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold tracking-tight">All Tasks</h2>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight">All Tasks</h2>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        View, organize, and filter all your tasks in one place.
+                      </p>
+                    </div>
                     <TaskForm />
                   </div>
+
+                  {/* Filters Bar */}
+                  <div className="flex flex-wrap items-center gap-4 bg-background p-4 rounded-xl border shadow-sm max-w-4xl">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      <span>Filter tasks by:</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Status Filter */}
+                      <Select 
+                        value={statusFilter} 
+                        onValueChange={(val: any) => setStatusFilter(val)}
+                      >
+                        <SelectTrigger className="w-[145px] h-9 text-xs">
+                          <SelectValue placeholder="Status: All" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border">
+                          <SelectItem value="all">Status: All</SelectItem>
+                          <SelectItem value="pending">Status: Pending</SelectItem>
+                          <SelectItem value="completed">Status: Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Priority Filter */}
+                      <Select 
+                        value={priorityFilter} 
+                        onValueChange={(val: any) => setPriorityFilter(val)}
+                      >
+                        <SelectTrigger className="w-[155px] h-9 text-xs">
+                          <SelectValue placeholder="Priority: All" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border">
+                          <SelectItem value="all">Priority: All</SelectItem>
+                          <SelectItem value="high">Priority: High</SelectItem>
+                          <SelectItem value="medium">Priority: Medium</SelectItem>
+                          <SelectItem value="low">Priority: Low</SelectItem>
+                          <SelectItem value="unassigned">Priority: Unassigned</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Clear Filters Button */}
+                      {(statusFilter !== 'all' || priorityFilter !== 'all') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setStatusFilter('all');
+                            setPriorityFilter('all');
+                          }}
+                          className="h-9 px-3 text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset Filters
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="bg-background rounded-xl border shadow-sm p-1 max-w-4xl">
                     <TaskList 
-                      tasks={tasks} 
+                      tasks={tasks.filter(task => {
+                        const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+                        const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+                        return matchesStatus && matchesPriority;
+                      })} 
                       selectedTask={activeTask}
                       onSelectTask={setActiveTask}
                     />
