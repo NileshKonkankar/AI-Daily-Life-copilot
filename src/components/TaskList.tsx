@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown, ListTodo, FileText, Plus, X, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown, ListTodo, FileText, Plus, X, CheckCircle2, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { startOfDay } from 'date-fns';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface TaskListProps {
   tasks: Task[];
@@ -43,6 +45,24 @@ export function TaskList({
   const [newSubTask, setNewSubTask] = useState('');
   const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [detailTagInput, setDetailTagInput] = useState('');
+
+  const handleAddDetailTag = async () => {
+    if (!selectedTask || !detailTagInput.trim()) return;
+    const currentTags = selectedTask.tags || [];
+    if (currentTags.includes(detailTagInput.trim())) {
+      setDetailTagInput('');
+      return;
+    }
+    if (currentTags.length >= 10) {
+      toast.error('Maximum 10 tags allowed per task');
+      return;
+    }
+    const updatedTags = [...currentTags, detailTagInput.trim()];
+    await updateTask(selectedTask.id!, { tags: updatedTags });
+    setSelectedTask({ ...selectedTask, tags: updatedTags });
+    setDetailTagInput('');
+  };
 
   const toggleSelectTask = (taskId: string) => {
     setSelectedTaskIds(prev => 
@@ -354,6 +374,11 @@ export function TaskList({
                       {task.priority}
                     </Badge>
                   )}
+                  {task.tags && task.tags.map(t => (
+                    <Badge key={t} variant="secondary" className="bg-primary/5 text-primary border border-primary/20 text-[10px] py-0 px-1.5 h-5 font-medium rounded-full">
+                      # {t}
+                    </Badge>
+                  ))}
                   {task.notes && (
                     <div className="flex items-center gap-1" title="Has notes">
                       <FileText size={12} className="text-muted-foreground" />
@@ -482,6 +507,92 @@ export function TaskList({
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Tags / Labels
+                </h4>
+                <div className="space-y-2">
+                  {/* Suggestions for existing task details */}
+                  <div className="flex flex-wrap gap-1.5 items-center mb-1">
+                    <span className="text-[10px] text-muted-foreground mr-1">Quick Add:</span>
+                    {['Work', 'Personal', 'Urgent'].map(sug => {
+                      const currentTags = selectedTask.tags || [];
+                      const alreadyAdded = currentTags.includes(sug);
+                      return (
+                        <button
+                          key={sug}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={async () => {
+                            if (alreadyAdded) return;
+                            if (currentTags.length >= 10) {
+                              toast.error('Maximum 10 tags allowed per task');
+                              return;
+                            }
+                            const updatedTags = [...currentTags, sug];
+                            await updateTask(selectedTask.id!, { tags: updatedTags });
+                            setSelectedTask({ ...selectedTask, tags: updatedTags });
+                          }}
+                          className={cn(
+                            "text-[10px] px-2 py-0.5 rounded border font-medium transition-all",
+                            alreadyAdded 
+                              ? "bg-muted text-muted-foreground border-transparent cursor-not-allowed opacity-50"
+                              : "bg-background text-foreground hover:bg-muted/70 hover:border-primary/30 border-border"
+                          )}
+                        >
+                          + {sug}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-lg border bg-muted/10 min-h-[36px] items-center">
+                    {(!selectedTask.tags || selectedTask.tags.length === 0) ? (
+                      <span className="text-xs text-muted-foreground italic pl-1">No tags on this task</span>
+                    ) : (
+                      selectedTask.tags.map(t => (
+                        <Badge key={t} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 flex items-center gap-1.5">
+                          {t}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const updatedTags = selectedTask.tags?.filter(tag => tag !== t) || [];
+                              await updateTask(selectedTask.id!, { tags: updatedTags });
+                              setSelectedTask({ ...selectedTask, tags: updatedTags });
+                            }}
+                            className="text-muted-foreground hover:text-foreground rounded-full size-4 flex items-center justify-center bg-muted/40 hover:bg-muted"
+                            title="Remove tag"
+                          >
+                            <X size={10} />
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Add custom tag..." 
+                      value={detailTagInput}
+                      onChange={(e) => setDetailTagInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          await handleAddDetailTag();
+                        }
+                      }}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" onClick={handleAddDetailTag} className="h-8 px-3 text-xs shrink-0">
+                      Add Tag
+                    </Button>
+                  </div>
                 </div>
               </div>
 

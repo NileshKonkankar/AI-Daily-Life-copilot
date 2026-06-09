@@ -12,6 +12,7 @@ export interface Task {
   createdAt: Date;
   notes?: string;
   subTasks?: { id: string; title: string; completed: boolean }[];
+  tags?: string[];
 }
 
 export interface Category {

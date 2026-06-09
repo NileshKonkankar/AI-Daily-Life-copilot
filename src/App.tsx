@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -26,6 +26,17 @@ export default function App() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'unassigned'>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
+
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    tasks.forEach(task => {
+      task.tags?.forEach(tag => {
+        tagsSet.add(tag);
+      });
+    });
+    return Array.from(tagsSet).sort();
+  }, [tasks]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
@@ -549,14 +560,31 @@ export default function App() {
                         </SelectContent>
                       </Select>
 
+                      {/* Tag Filter */}
+                      <Select 
+                        value={tagFilter} 
+                        onValueChange={(val: any) => setTagFilter(val)}
+                      >
+                        <SelectTrigger className="w-[145px] h-9 text-xs">
+                          <SelectValue placeholder="Tag: All" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-background border">
+                          <SelectItem value="all">Tag: All</SelectItem>
+                          {allTags.map(tag => (
+                            <SelectItem key={tag} value={tag}>Tag: #{tag}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
                       {/* Clear Filters Button */}
-                      {(statusFilter !== 'all' || priorityFilter !== 'all') && (
+                      {(statusFilter !== 'all' || priorityFilter !== 'all' || tagFilter !== 'all') && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => {
                             setStatusFilter('all');
                             setPriorityFilter('all');
+                            setTagFilter('all');
                           }}
                           className="h-9 px-3 text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
                         >
@@ -572,7 +600,8 @@ export default function App() {
                       tasks={tasks.filter(task => {
                         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
                         const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-                        return matchesStatus && matchesPriority;
+                        const matchesTag = tagFilter === 'all' || (task.tags && task.tags.includes(tagFilter));
+                        return matchesStatus && matchesPriority && matchesTag;
                       })} 
                       selectedTask={activeTask}
                       onSelectTask={setActiveTask}

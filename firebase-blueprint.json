@@ -53,6 +53,13 @@
             "required": ["id", "title", "completed"]
           },
           "description": "List of sub-tasks for the task."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Custom labels or tags for organizing tasks."
         }
       },
       "required": ["title", "priority", "category", "status", "userId", "createdAt"]

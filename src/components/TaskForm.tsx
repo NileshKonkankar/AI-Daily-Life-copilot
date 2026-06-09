@@ -7,9 +7,10 @@ import { addTask, Task, subscribeToCategories, Category, addCategory } from '../
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, startOfDay } from 'date-fns';
-import { CalendarIcon, Plus, Check, X } from 'lucide-react';
+import { CalendarIcon, Plus, Check, X, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 export function TaskForm() {
   const [open, setOpen] = useState(false);
@@ -17,11 +18,25 @@ export function TaskForm() {
   const [deadline, setDeadline] = useState<Date | undefined>();
   const [priority, setPriority] = useState<Task['priority']>('unassigned');
   const [category, setCategory] = useState<Task['category']>('work');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [loading, setLoading] = useState(false);
   
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+
+  const handleAddTag = (tagToAdd?: string) => {
+    const val = (tagToAdd || tagInput).trim();
+    if (val && !tags.includes(val)) {
+      if (tags.length >= 10) {
+        toast.error('Maximum 10 tags allowed per task');
+        return;
+      }
+      setTags([...tags, val]);
+    }
+    setTagInput('');
+  };
 
   React.useEffect(() => {
     const unsub = subscribeToCategories(setCustomCategories);
@@ -53,7 +68,8 @@ export function TaskForm() {
         deadline: deadline || null,
         priority,
         category,
-        status: 'pending'
+        status: 'pending',
+        tags
       });
       toast.success('Task added successfully');
       setOpen(false);
@@ -62,6 +78,8 @@ export function TaskForm() {
       setDeadline(undefined);
       setPriority('unassigned');
       setCategory('work');
+      setTags([]);
+      setTagInput('');
     } catch (error) {
       toast.error('Failed to add task');
     } finally {
@@ -172,6 +190,77 @@ export function TaskForm() {
                   </SelectContent>
                 </Select>
               )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <Tag size={14} className="text-muted-foreground" />
+              <span>Tags / Labels</span>
+            </div>
+            
+            {/* Suggestions */}
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-[10px] text-muted-foreground mr-1">Suggestions:</span>
+              {['Work', 'Personal', 'Urgent'].map(sug => {
+                const alreadyAdded = tags.includes(sug);
+                return (
+                  <button
+                    key={sug}
+                    type="button"
+                    disabled={alreadyAdded}
+                    onClick={() => handleAddTag(sug)}
+                    className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-md border font-medium transition-all",
+                      alreadyAdded 
+                        ? "bg-muted text-muted-foreground border-transparent cursor-not-allowed opacity-50"
+                        : "bg-background text-foreground hover:bg-muted/70 hover:border-primary/30 border-border"
+                    )}
+                  >
+                    + {sug}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Tags list */}
+            <div className="flex flex-wrap gap-1.5 p-2 rounded-lg border bg-muted/15 min-h-[36px] items-center">
+              {tags.length === 0 ? (
+                <span className="text-xs text-muted-foreground italic pl-1">No tags added yet</span>
+              ) : (
+                tags.map(t => (
+                  <Badge key={t} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 flex items-center gap-1.5">
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => setTags(tags.filter(tag => tag !== t))}
+                      className="text-muted-foreground hover:text-foreground rounded-full size-4 flex items-center justify-center bg-muted/40 hover:bg-muted"
+                      title="Remove tag"
+                    >
+                      <X size={10} />
+                    </button>
+                  </Badge>
+                ))
+              )}
+            </div>
+
+            {/* Custom Tag input */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter custom tag..."
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                className="h-9 text-sm"
+              />
+              <Button type="button" variant="outline" size="sm" className="h-9 px-3 shrink-0" onClick={() => handleAddTag()}>
+                Add Tag
+              </Button>
             </div>
           </div>
 

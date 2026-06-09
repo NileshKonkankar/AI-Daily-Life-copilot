@@ -64,7 +64,7 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidTask(data) {
-      let allowedFields = ['title', 'deadline', 'priority', 'category', 'status', 'userId', 'createdAt', 'notes', 'subTasks'];
+      let allowedFields = ['title', 'deadline', 'priority', 'category', 'status', 'userId', 'createdAt', 'notes', 'subTasks', 'tags'];
       let hasRequired = data.keys().hasAll(['title', 'priority', 'category', 'status', 'userId', 'createdAt']);
       
       let validTitle = data.title is string && data.title.size() > 0 && data.title.size() <= 200;
@@ -77,8 +77,9 @@ service cloud.firestore {
       let validDeadline = !('deadline' in data) || data.deadline == null || data.deadline is timestamp;
       let validNotes = !('notes' in data) || (data.notes is string && data.notes.size() <= 5000);
       let validSubTasks = !('subTasks' in data) || data.subTasks is list;
+      let validTags = !('tags' in data) || (data.tags is list && data.tags.size() <= 20);
 
-      return hasRequired && validTitle && validPriority && validCategory && validStatus && validUserId && validCreatedAt && validDeadline && validNotes && validSubTasks;
+      return hasRequired && validTitle && validPriority && validCategory && validStatus && validUserId && validCreatedAt && validDeadline && validNotes && validSubTasks && validTags;
     }
 
     function isValidCategory(data) {
