@@ -178,6 +178,23 @@ export function TaskList({
     }
   };
 
+  const getPriorityCardClasses = (task: Task) => {
+    if (task.status === 'completed') {
+      return 'bg-muted/30 text-muted-foreground border-muted-foreground/10 opacity-70 transition-all';
+    }
+
+    switch (task.priority) {
+      case 'high':
+        return 'bg-red-500/[0.04] hover:bg-red-500/[0.07] dark:bg-red-500/[0.05] dark:hover:bg-red-500/[0.08] ring-red-500/35 border-l-4 border-l-red-500 rounded-l-none transition-all';
+      case 'medium':
+        return 'bg-amber-500/[0.04] hover:bg-amber-500/[0.07] dark:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.08] ring-amber-500/35 border-l-4 border-l-amber-500 rounded-l-none transition-all';
+      case 'low':
+        return 'bg-blue-500/[0.04] hover:bg-blue-500/[0.07] dark:bg-blue-500/[0.05] dark:hover:bg-blue-500/[0.08] ring-blue-500/35 border-l-4 border-l-blue-500 rounded-l-none transition-all';
+      default:
+        return 'bg-card hover:bg-muted/20 border-border transition-all';
+    }
+  };
+
   const PriorityIcon = ({ priority, className }: { priority: string, className?: string }) => {
     switch (priority) {
       case 'high': return <ArrowUp className={className} />;
@@ -279,7 +296,6 @@ export function TaskList({
                 opacity: task.status === 'completed' ? 0.6 : 1,
                 scale: task.status === 'completed' ? 0.98 : 1,
                 y: 0,
-                backgroundColor: task.status === 'completed' ? 'var(--muted)' : 'var(--card)',
                 transition: {
                   type: "spring",
                   stiffness: task.status === 'completed' ? 400 : 300,
@@ -296,7 +312,7 @@ export function TaskList({
                 opacity: { duration: 0.2 }
               }}
             >
-              <Card className={`p-4 transition-all ${isPrioritized && rank === 1 ? 'border-primary shadow-md' : ''}`}>
+              <Card className={cn("p-4 transition-all", getPriorityCardClasses(task), isPrioritized && rank === 1 ? 'border-primary shadow-md' : '')}>
             <div className="flex items-start gap-3">
               <div className="mt-1 flex items-center shrink-0">
                 <Checkbox 
