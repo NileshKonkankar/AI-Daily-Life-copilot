@@ -8,12 +8,13 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw, Timer } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarView } from './components/CalendarView';
+import { PomodoroTimer } from './components/PomodoroTimer';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -216,13 +217,15 @@ export default function App() {
             Settings
           </Link>
         </nav>
-        <div className="p-4 border-t">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+        <div className="p-4 border-t space-y-4">
+          <PomodoroTimer activeTask={activeTask} onSelectTask={setActiveTask} />
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium shrink-0">
               {user.email?.[0].toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium truncate">{user.email}</p>
+              <p className="text-xs font-semibold truncate text-foreground">{user.email}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Workspace User</p>
             </div>
           </div>
         </div>
@@ -252,6 +255,31 @@ export default function App() {
                 <Moon className="h-5 w-5 text-slate-700 animate-in spin-in-12 duration-200" />
               )}
             </Button>
+
+            {/* Mobile Pomodoro Timer Popover Shortcut */}
+            <Popover>
+              <PopoverTrigger render={
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-orange-500 md:hidden transition-colors relative"
+                  title="Pomodoro Session Timer"
+                >
+                  <Timer className="h-5 w-5 text-orange-500 animate-pulse" />
+                </Button>
+              } />
+              <PopoverContent className="w-80 p-0 shadow-xl rounded-xl border z-50 bg-background overflow-hidden" align="end">
+                <div className="p-3 bg-muted/20 border-b flex items-center justify-between">
+                  <span className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                    <Timer className="h-4 w-4 text-orange-500" /> Pomodoro Timer
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">Quick Access</span>
+                </div>
+                <div className="p-3">
+                  <PomodoroTimer activeTask={activeTask} onSelectTask={setActiveTask} />
+                </div>
+              </PopoverContent>
+            </Popover>
             
             <Popover>
               <PopoverTrigger render={
