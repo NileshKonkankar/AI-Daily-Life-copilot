@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Task, subscribeToTasks } from './services/taskService';
@@ -722,6 +722,8 @@ export default function App() {
                   </div>
                 </div>
               } />
+              {/* Fallback Catch-all Route: Redirects any typed invalid URL to Dashboard securely */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </main>
