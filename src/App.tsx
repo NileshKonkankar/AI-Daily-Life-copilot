@@ -15,6 +15,7 @@ import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarView } from './components/CalendarView';
 import { PomodoroTimer } from './components/PomodoroTimer';
+import { WeeklyGoalTracker } from './components/WeeklyGoalTracker';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -411,7 +412,7 @@ export default function App() {
                   )}
 
                   {/* Overview Cards Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Metrics Card */}
                     <div className="bg-background rounded-xl border shadow-sm p-6 flex flex-col justify-between">
                       <div>
@@ -510,6 +511,9 @@ export default function App() {
                         )}
                       </div>
                     </div>
+
+                    {/* Weekly Completion Goal Tracker Card */}
+                    <WeeklyGoalTracker tasks={tasks} userId={user.uid} />
                   </div>
 
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
