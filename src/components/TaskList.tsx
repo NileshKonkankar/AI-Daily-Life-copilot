@@ -290,25 +290,32 @@ export function TaskList({
           return (
             <motion.div
               key={task.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              layout="position"
+              initial={{ opacity: 0, x: -16, y: 12, scale: 0.96 }}
               animate={{ 
                 opacity: task.status === 'completed' ? 0.6 : 1,
                 scale: task.status === 'completed' ? 0.98 : 1,
+                x: 0,
                 y: 0,
                 transition: {
                   type: "spring",
-                  stiffness: task.status === 'completed' ? 400 : 300,
-                  damping: task.status === 'completed' ? 15 : 25
+                  stiffness: task.status === 'completed' ? 380 : 320,
+                  damping: task.status === 'completed' ? 20 : 25
                 }
               }}
-              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-              whileHover={{ scale: task.status === 'completed' ? 0.98 : 1.01 }}
+              exit={{ 
+                opacity: 0, 
+                x: 24, 
+                scale: 0.95, 
+                y: -10,
+                transition: { duration: 0.22, ease: "easeInOut" } 
+              }}
+              whileHover={{ scale: task.status === 'completed' ? 0.99 : 1.01 }}
               whileTap={{ scale: 0.98 }}
               transition={{ 
                 type: "spring",
-                stiffness: 300,
-                damping: 25,
+                stiffness: 320,
+                damping: 24,
                 opacity: { duration: 0.2 }
               }}
             >
