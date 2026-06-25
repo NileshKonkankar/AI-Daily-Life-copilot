@@ -1,5 +1,6 @@
 import { Task, updateTask, deleteTask } from '../services/taskService';
 import { Card } from '@/components/ui/card';
+import confetti from 'canvas-confetti';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -18,6 +19,25 @@ import { startOfDay } from 'date-fns';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+const triggerConfetti = () => {
+  // Left side celebration burst
+  confetti({
+    particleCount: 45,
+    angle: 60,
+    spread: 55,
+    origin: { x: 0, y: 0.8 },
+    colors: ['#f97316', '#3b82f6', '#10b981', '#a855f7', '#eab308']
+  });
+  // Right side celebration burst
+  confetti({
+    particleCount: 45,
+    angle: 120,
+    spread: 55,
+    origin: { x: 1, y: 0.8 },
+    colors: ['#f97316', '#3b82f6', '#10b981', '#a855f7', '#eab308']
+  });
+};
 
 interface TaskListProps {
   tasks: Task[];
@@ -84,6 +104,7 @@ export function TaskList({
     if (selectedTaskIds.length === 0) return;
     const promises = selectedTaskIds.map(id => updateTask(id, { status: 'completed' }));
     await Promise.all(promises);
+    triggerConfetti();
     setSelectedTaskIds([]);
   };
 
@@ -339,6 +360,7 @@ export function TaskList({
                     updateTask(task.id!, { status: checked ? 'completed' : 'pending' });
                     if (checked) {
                       setJustCompletedId(task.id!);
+                      triggerConfetti();
                       setTimeout(() => setJustCompletedId(null), 800);
                     }
                   }}
