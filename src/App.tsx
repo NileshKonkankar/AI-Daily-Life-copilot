@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { auth, loginWithGoogle, logout } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Task, subscribeToTasks } from './services/taskService';
@@ -16,11 +16,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarView } from './components/CalendarView';
 import { PomodoroTimer } from './components/PomodoroTimer';
 import { WeeklyGoalTracker } from './components/WeeklyGoalTracker';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DashboardFAB } from './components/DashboardFAB';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function App() {
+  const navigate = useNavigate();
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
@@ -733,6 +738,28 @@ export default function App() {
         </main>
       </div>
       <Toaster />
+
+      {/* Task Creation & Timer Dialog Triggers for FAB */}
+      <TaskForm open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} hideTrigger />
+      
+      <Dialog open={isTimerOpen} onOpenChange={setIsTimerOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Timer className="h-5 w-5 text-orange-500 animate-pulse" /> Pomodoro Timer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-1">
+            <PomodoroTimer activeTask={activeTask} onSelectTask={setActiveTask} />
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <DashboardFAB 
+        onAddTask={() => setIsAddTaskOpen(true)}
+        onStartTimer={() => setIsTimerOpen(true)}
+        onViewCalendar={() => navigate('/calendar')}
+      />
     </div>
   );
 }

@@ -12,8 +12,19 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
-export function TaskForm() {
-  const [open, setOpen] = useState(false);
+interface TaskFormProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}
+
+export function TaskForm({ open: externalOpen, onOpenChange: externalOnOpenChange, hideTrigger = false }: TaskFormProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  const isControlled = externalOpen !== undefined;
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? externalOnOpenChange! : setInternalOpen;
+
   const [title, setTitle] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>();
   const [priority, setPriority] = useState<Task['priority']>('unassigned');
@@ -89,7 +100,9 @@ export function TaskForm() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="gap-2"><Plus size={16} /> Add Task</Button>} />
+      {!hideTrigger && (
+        <DialogTrigger render={<Button className="gap-2"><Plus size={16} /> Add Task</Button>} />
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
