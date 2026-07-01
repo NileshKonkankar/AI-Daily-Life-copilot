@@ -8,7 +8,7 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw, Timer } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw, Timer, X } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
@@ -26,6 +26,35 @@ export default function App() {
   const navigate = useNavigate();
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+
+      // Create Task Shortcut: Cmd+N or Ctrl+N
+      if (isCmdOrCtrl && key === 'n') {
+        e.preventDefault();
+        setIsAddTaskOpen(true);
+      }
+
+      // Toggle Sidebar Shortcut: Cmd+B or Ctrl+B
+      if (isCmdOrCtrl && key === 'b') {
+        e.preventDefault();
+        setIsSidebarOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const [user, setUser] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
@@ -199,11 +228,30 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-muted/20 font-sans text-foreground">
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-[1px] z-30 md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 border-r bg-background hidden md:flex flex-col">
-        <div className="h-14 flex items-center px-4 border-b">
-          <CheckCircle2 className="h-6 w-6 text-primary mr-2" />
-          <span className="font-bold text-lg tracking-tight">AI Copilot</span>
+      <aside className={cn(
+        "w-64 border-r bg-background flex flex-col shrink-0 transition-all duration-300 z-40",
+        "fixed inset-y-0 left-0 md:static",
+        isSidebarOpen 
+          ? "translate-x-0" 
+          : "-translate-x-full md:translate-x-0 md:w-0 md:border-r-0 md:overflow-hidden"
+      )}>
+        <div className="h-14 flex items-center justify-between px-4 border-b shrink-0">
+          <div className="flex items-center">
+            <CheckCircle2 className="h-6 w-6 text-primary mr-2" />
+            <span className="font-bold text-lg tracking-tight">AI Copilot</span>
+          </div>
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           <Link to="/" className={cn(buttonVariants({ variant: location.pathname === '/' ? 'secondary' : 'ghost' }), "w-full justify-start")}>
@@ -242,7 +290,16 @@ export default function App() {
         {/* Topbar */}
         <header className="h-14 border-b bg-background/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-6 z-10">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(prev => !prev)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hidden md:flex text-muted-foreground hover:text-foreground hover:bg-muted"
+              onClick={() => setIsSidebarOpen(prev => !prev)}
+              title="Toggle Sidebar (Cmd+B / Ctrl+B)"
+            >
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="font-semibold text-lg hidden sm:block">{getPageTitle()}</h1>
@@ -706,6 +763,27 @@ export default function App() {
                             <p className="text-xs text-muted-foreground mt-1">Deep, eye-friendly palette</p>
                           </div>
                         </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-medium mb-3">Keyboard Shortcuts</h3>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        Speed up your workflow using global keys accessible from anywhere in the application.
+                      </p>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm py-1.5 border-b border-border/50">
+                          <span className="text-muted-foreground font-medium">Create New Task</span>
+                          <kbd className="px-2 py-1 bg-muted border rounded text-xs font-mono font-bold shadow-sm">
+                            <span className="text-[10px] mr-0.5">⌘</span>N / <span className="text-[10px] mr-0.5">Ctrl</span>+N
+                          </kbd>
+                        </div>
+                        <div className="flex items-center justify-between text-sm py-1.5">
+                          <span className="text-muted-foreground font-medium">Toggle Left Sidebar</span>
+                          <kbd className="px-2 py-1 bg-muted border rounded text-xs font-mono font-bold shadow-sm">
+                            <span className="text-[10px] mr-0.5">⌘</span>B / <span className="text-[10px] mr-0.5">Ctrl</span>+B
+                          </kbd>
+                        </div>
                       </div>
                     </div>
 
