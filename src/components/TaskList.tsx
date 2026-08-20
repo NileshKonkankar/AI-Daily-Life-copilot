@@ -39,6 +39,48 @@ const triggerConfetti = () => {
   });
 };
 
+const listContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+};
+
+const taskItemVariants = {
+  hidden: { 
+    opacity: 0, 
+    x: -14, 
+    y: 12, 
+    scale: 0.96 
+  },
+  visible: (custom: { isCompleted: boolean; index: number }) => ({
+    opacity: custom.isCompleted ? 0.6 : 1,
+    scale: custom.isCompleted ? 0.98 : 1,
+    x: 0,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: custom.isCompleted ? 380 : 320,
+      damping: custom.isCompleted ? 20 : 25,
+      delay: Math.min(custom.index * 0.04, 0.35),
+    }
+  }),
+  exit: { 
+    opacity: 0, 
+    x: 24, 
+    scale: 0.95, 
+    y: -8,
+    transition: { 
+      duration: 0.22, 
+      ease: "easeInOut" 
+    } 
+  },
+};
+
 interface TaskListProps {
   tasks: Task[];
   prioritizedIds?: string[];
@@ -184,9 +226,15 @@ export function TaskList({
 
   if (tasks.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg">
+      <motion.div 
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="text-center py-12 text-muted-foreground border border-dashed rounded-lg"
+      >
         No tasks yet. Add one to get started!
-      </div>
+      </motion.div>
     );
   }
 
@@ -303,43 +351,29 @@ export function TaskList({
         )}
       </AnimatePresence>
 
-      <AnimatePresence mode="popLayout">
-        {sortedTasks.map((task, index) => {
-          const isPrioritized = prioritizedIds && prioritizedIds.indexOf(task.id!) !== -1;
-          const rank = isPrioritized ? prioritizedIds.indexOf(task.id!) + 1 : null;
+      <motion.div 
+        variants={listContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-3"
+      >
+        <AnimatePresence mode="popLayout">
+          {sortedTasks.map((task, index) => {
+            const isPrioritized = prioritizedIds && prioritizedIds.indexOf(task.id!) !== -1;
+            const rank = isPrioritized ? prioritizedIds.indexOf(task.id!) + 1 : null;
 
-          return (
-            <motion.div
-              key={task.id}
-              layout="position"
-              initial={{ opacity: 0, x: -16, y: 12, scale: 0.96 }}
-              animate={{ 
-                opacity: task.status === 'completed' ? 0.6 : 1,
-                scale: task.status === 'completed' ? 0.98 : 1,
-                x: 0,
-                y: 0,
-                transition: {
-                  type: "spring",
-                  stiffness: task.status === 'completed' ? 380 : 320,
-                  damping: task.status === 'completed' ? 20 : 25
-                }
-              }}
-              exit={{ 
-                opacity: 0, 
-                x: 24, 
-                scale: 0.95, 
-                y: -10,
-                transition: { duration: 0.22, ease: "easeInOut" } 
-              }}
-              whileHover={{ scale: task.status === 'completed' ? 0.99 : 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ 
-                type: "spring",
-                stiffness: 320,
-                damping: 24,
-                opacity: { duration: 0.2 }
-              }}
-            >
+            return (
+              <motion.div
+                key={task.id}
+                layout="position"
+                variants={taskItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                custom={{ isCompleted: task.status === 'completed', index }}
+                whileHover={{ scale: task.status === 'completed' ? 0.99 : 1.01 }}
+                whileTap={{ scale: 0.98 }}
+              >
               <Card className={cn("p-4 transition-all", getPriorityCardClasses(task), isPrioritized && rank === 1 ? 'border-primary shadow-md' : '')}>
             <div className="flex items-start gap-3">
               <div className="mt-1 flex items-center shrink-0">
@@ -471,7 +505,8 @@ export function TaskList({
             </motion.div>
         );
       })}
-      </AnimatePresence>
+        </AnimatePresence>
+      </motion.div>
 
       <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
         <DialogContent className="sm:max-w-md">
