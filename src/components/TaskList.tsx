@@ -19,6 +19,7 @@ import { startOfDay } from 'date-fns';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { playCompletionChime } from '../utils/sound';
 
 const triggerConfetti = () => {
   // Left side celebration burst
@@ -146,6 +147,7 @@ export function TaskList({
     if (selectedTaskIds.length === 0) return;
     const promises = selectedTaskIds.map(id => updateTask(id, { status: 'completed' }));
     await Promise.all(promises);
+    playCompletionChime({ isBulk: true });
     triggerConfetti();
     setSelectedTaskIds([]);
   };
@@ -186,10 +188,19 @@ export function TaskList({
 
   const toggleSubTask = async (subTaskId: string) => {
     if (!selectedTask || !selectedTask.subTasks) return;
-    const updatedSubTasks = selectedTask.subTasks.map(st => 
-      st.id === subTaskId ? { ...st, completed: !st.completed } : st
-    );
+    let becameCompleted = false;
+    const updatedSubTasks = selectedTask.subTasks.map(st => {
+      if (st.id === subTaskId) {
+        if (!st.completed) becameCompleted = true;
+        return { ...st, completed: !st.completed };
+      }
+      return st;
+    });
     
+    if (becameCompleted) {
+      playCompletionChime({ volumeMultiplier: 0.65 });
+    }
+
     await updateTask(selectedTask.id!, { subTasks: updatedSubTasks });
     setSelectedTask({ ...selectedTask, subTasks: updatedSubTasks });
   };
@@ -394,6 +405,7 @@ export function TaskList({
                     updateTask(task.id!, { status: checked ? 'completed' : 'pending' });
                     if (checked) {
                       setJustCompletedId(task.id!);
+                      playCompletionChime();
                       triggerConfetti();
                       setTimeout(() => setJustCompletedId(null), 800);
                     }
@@ -528,9 +540,31 @@ export function TaskList({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
-                  <Badge variant={selectedTask.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
-                    {selectedTask.status}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nextStatus = selectedTask.status === 'completed' ? 'pending' : 'completed';
+                      await updateTask(selectedTask.id!, { status: nextStatus });
+                      setSelectedTask({ ...selectedTask, status: nextStatus });
+                      if (nextStatus === 'completed') {
+                        playCompletionChime();
+                        triggerConfetti();
+                      }
+                    }}
+                    className="flex items-center gap-1.5 focus:outline-none group"
+                  >
+                    <Badge 
+                      variant={selectedTask.status === 'completed' ? 'default' : 'secondary'} 
+                      className={cn(
+                        "capitalize cursor-pointer transition-all hover:opacity-90 flex items-center gap-1",
+                        selectedTask.status === 'completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                      )}
+                    >
+                      {selectedTask.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
+                      {selectedTask.status}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground group-hover:underline">click to toggle</span>
+                  </button>
                 </div>
                 
                 <div>
