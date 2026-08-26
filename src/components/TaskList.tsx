@@ -45,7 +45,7 @@ const listContainerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
+      staggerChildren: 0.04,
       delayChildren: 0.02,
     },
   },
@@ -54,30 +54,28 @@ const listContainerVariants = {
 const taskItemVariants = {
   hidden: { 
     opacity: 0, 
-    x: -14, 
-    y: 12, 
-    scale: 0.96 
+    x: -28, 
+    scale: 0.97,
   },
   visible: (custom: { isCompleted: boolean; index: number }) => ({
     opacity: custom.isCompleted ? 0.6 : 1,
     scale: custom.isCompleted ? 0.98 : 1,
     x: 0,
-    y: 0,
     transition: {
       type: "spring",
-      stiffness: custom.isCompleted ? 380 : 320,
-      damping: custom.isCompleted ? 20 : 25,
-      delay: Math.min(custom.index * 0.04, 0.35),
+      stiffness: custom.isCompleted ? 360 : 320,
+      damping: custom.isCompleted ? 24 : 26,
+      mass: 0.8,
+      delay: Math.min(custom.index * 0.03, 0.25),
     }
   }),
   exit: { 
     opacity: 0, 
-    x: 24, 
-    scale: 0.95, 
-    y: -8,
+    x: 36, 
+    scale: 0.93, 
     transition: { 
-      duration: 0.22, 
-      ease: "easeInOut" 
+      duration: 0.24, 
+      ease: [0.32, 0, 0.67, 0] 
     } 
   },
 };
@@ -722,10 +720,16 @@ export function TaskList({
                     {selectedTask.subTasks?.map((st) => (
                       <motion.div 
                         key={st.id}
-                        layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
+                        layout="position"
+                        initial={{ opacity: 0, x: -16, scale: 0.98 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 26,
+                          opacity: { duration: 0.2 }
+                        }}
                         className="flex items-center gap-2 group p-2 rounded-md hover:bg-muted/50 border border-transparent hover:border-border transition-all"
                       >
                         <Checkbox 
