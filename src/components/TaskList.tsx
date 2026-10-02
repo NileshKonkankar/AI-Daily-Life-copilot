@@ -1,6 +1,5 @@
 import { Task, updateTask, deleteTask } from '../services/taskService';
 import { Card } from '@/components/ui/card';
-import confetti from 'canvas-confetti';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -20,25 +19,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { playCompletionChime } from '../utils/sound';
-
-const triggerConfetti = () => {
-  // Left side celebration burst
-  confetti({
-    particleCount: 45,
-    angle: 60,
-    spread: 55,
-    origin: { x: 0, y: 0.8 },
-    colors: ['#f97316', '#3b82f6', '#10b981', '#a855f7', '#eab308']
-  });
-  // Right side celebration burst
-  confetti({
-    particleCount: 45,
-    angle: 120,
-    spread: 55,
-    origin: { x: 1, y: 0.8 },
-    colors: ['#f97316', '#3b82f6', '#10b981', '#a855f7', '#eab308']
-  });
-};
+import { fireTaskCompletionConfetti, fireBulkCompletionConfetti } from '../utils/confetti';
 
 const listContainerVariants = {
   hidden: { opacity: 0 },
@@ -146,7 +127,7 @@ export function TaskList({
     const promises = selectedTaskIds.map(id => updateTask(id, { status: 'completed' }));
     await Promise.all(promises);
     playCompletionChime({ isBulk: true });
-    triggerConfetti();
+    fireBulkCompletionConfetti();
     setSelectedTaskIds([]);
   };
 
@@ -196,7 +177,14 @@ export function TaskList({
     });
     
     if (becameCompleted) {
-      playCompletionChime({ volumeMultiplier: 0.65 });
+      const allSubtasksDone = updatedSubTasks.length > 0 && updatedSubTasks.every(st => st.completed);
+      if (allSubtasksDone) {
+        playCompletionChime();
+        fireTaskCompletionConfetti({ x: 0.5, y: 0.5 });
+        toast.success("All sub-tasks completed! 🎉");
+      } else {
+        playCompletionChime({ volumeMultiplier: 0.65 });
+      }
     }
 
     await updateTask(selectedTask.id!, { subTasks: updatedSubTasks });
@@ -395,7 +383,15 @@ export function TaskList({
               </div>
               <motion.div 
                 whileTap={{ scale: 0.8 }}
-                className="mt-1 flex items-center"
+                className="mt-1 flex items-center relative"
+                onPointerDown={(e) => {
+                  if (typeof window !== 'undefined' && e.clientX && e.clientY) {
+                    (window as any).__lastPointerOrigin = {
+                      x: e.clientX / window.innerWidth,
+                      y: e.clientY / window.innerHeight,
+                    };
+                  }
+                }}
               >
                 <Checkbox 
                   checked={task.status === 'completed'} 
@@ -404,7 +400,8 @@ export function TaskList({
                     if (checked) {
                       setJustCompletedId(task.id!);
                       playCompletionChime();
-                      triggerConfetti();
+                      const origin = typeof window !== 'undefined' ? (window as any).__lastPointerOrigin : undefined;
+                      fireTaskCompletionConfetti(origin);
                       setTimeout(() => setJustCompletedId(null), 800);
                     }
                   }}
@@ -540,13 +537,17 @@ export function TaskList({
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={async (e) => {
                       const nextStatus = selectedTask.status === 'completed' ? 'pending' : 'completed';
                       await updateTask(selectedTask.id!, { status: nextStatus });
                       setSelectedTask({ ...selectedTask, status: nextStatus });
                       if (nextStatus === 'completed') {
                         playCompletionChime();
-                        triggerConfetti();
+                        const origin = e.clientX && e.clientY ? {
+                          x: e.clientX / window.innerWidth,
+                          y: e.clientY / window.innerHeight
+                        } : undefined;
+                        fireTaskCompletionConfetti(origin);
                       }
                     }}
                     className="flex items-center gap-1.5 focus:outline-none group"

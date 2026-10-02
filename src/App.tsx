@@ -8,7 +8,7 @@ import { TaskForm } from './components/TaskForm';
 import { AIPanel } from './components/AIPanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw, Timer, X, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { LogOut, CheckCircle2, LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, Menu, Bell, Sun, Moon, Clock, SlidersHorizontal, RotateCcw, Timer, X, Volume2, VolumeX, Sparkles, PartyPopper } from 'lucide-react';
 import { Toaster } from '@/components/ui/sonner';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { format, isToday, isTomorrow, isBefore, startOfDay } from 'date-fns';
@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { playCompletionChime, isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from './utils/sound';
+import { fireTaskCompletionConfetti, fireBulkCompletionConfetti, isConfettiEnabled, setConfettiEnabled } from './utils/confetti';
 
 export default function App() {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ export default function App() {
   }, []);
 
   const [soundEnabled, setSoundState] = useState(() => isSoundEnabled());
+  const [confettiEnabled, setConfettiState] = useState(() => isConfettiEnabled());
   const [user, setUser] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [prioritizedIds, setPrioritizedIds] = useState<string[]>([]);
@@ -818,6 +820,61 @@ export default function App() {
                           <div className="text-left">
                             <p className="font-semibold text-sm leading-none">Muted</p>
                             <p className="text-xs text-muted-foreground mt-1">Silent task completion without audio</p>
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <PartyPopper className="h-5 w-5 text-orange-500" />
+                          <h3 className="text-lg font-medium">Celebration & Confetti Animations</h3>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            fireTaskCompletionConfetti();
+                          }}
+                          className="h-8 text-xs gap-1.5"
+                          title="Preview the task completion confetti burst"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                          Test Confetti
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        Trigger a joyful celebratory canvas-confetti animation whenever a task is marked as completed.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button 
+                          variant={confettiEnabled ? 'default' : 'outline'} 
+                          className="flex-1 justify-start gap-3 h-14 px-4"
+                          onClick={() => {
+                            setConfettiEnabled(true);
+                            setConfettiState(true);
+                            fireTaskCompletionConfetti();
+                          }}
+                        >
+                          <PartyPopper className="h-5 w-5 shrink-0 text-amber-400" />
+                          <div className="text-left">
+                            <p className="font-semibold text-sm leading-none">Confetti Enabled</p>
+                            <p className="text-xs text-muted-foreground mt-1">Celebratory particles burst on completion</p>
+                          </div>
+                        </Button>
+                        <Button 
+                          variant={!confettiEnabled ? 'default' : 'outline'} 
+                          className="flex-1 justify-start gap-3 h-14 px-4"
+                          onClick={() => {
+                            setConfettiEnabled(false);
+                            setConfettiState(false);
+                          }}
+                        >
+                          <Sparkles className="h-5 w-5 shrink-0 opacity-50" />
+                          <div className="text-left">
+                            <p className="font-semibold text-sm leading-none">Minimal Mode</p>
+                            <p className="text-xs text-muted-foreground mt-1">No celebratory confetti animations</p>
                           </div>
                         </Button>
                       </div>

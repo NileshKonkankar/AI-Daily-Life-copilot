@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Target, Trophy, Plus, Minus, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Target, Trophy, Plus, Minus, Sparkles, CheckCircle2, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { startOfWeek, endOfWeek, format, isWithinInterval } from 'date-fns';
 import { Task } from '../services/taskService';
+import { fireMilestoneConfetti } from '../utils/confetti';
+import { playCompletionChime } from '../utils/sound';
 
 interface WeeklyGoalTrackerProps {
   tasks: Task[];
@@ -147,7 +149,17 @@ export function WeeklyGoalTracker({ tasks, userId }: WeeklyGoalTrackerProps) {
         <div className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium leading-relaxed ${motivation.colorClass} flex items-center justify-between`}>
           <span>{motivation.message}</span>
           {isGoalReached && (
-            <Sparkles size={14} className="text-amber-500 shrink-0 ml-1.5 animate-bounce" />
+            <button
+              onClick={() => {
+                playCompletionChime({ isBulk: true });
+                fireMilestoneConfetti();
+              }}
+              className="inline-flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded-full font-bold shadow-xs transition-transform active:scale-95 ml-2 cursor-pointer"
+              title="Trigger celebration confetti!"
+            >
+              <PartyPopper size={12} />
+              Celebrate!
+            </button>
           )}
         </div>
       </div>
