@@ -60,6 +60,10 @@
             "type": "string"
           },
           "description": "Custom labels or tags for organizing tasks."
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Whether the task is archived."
         }
       },
       "required": ["title", "priority", "category", "status", "userId", "createdAt"]

@@ -166,7 +166,7 @@ export default function App() {
     const todayStart = startOfDay(now);
 
     tasks.forEach(task => {
-      if (task.status === 'completed' || !task.deadline) return;
+      if (task.status === 'completed' || task.isArchived || !task.deadline) return;
 
       const dl = new Date(task.deadline);
       if (isBefore(dl, todayStart) && !isToday(dl)) {

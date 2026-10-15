@@ -1,9 +1,27 @@
-import { Task, updateTask, deleteTask } from '../services/taskService';
+import { Task, updateTask, deleteTask, batchDeleteTasks, batchArchiveTasks, batchUpdatePriority, batchUpdateStatus } from '../services/taskService';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, ArrowUp, ArrowRight, ArrowDown, ListTodo, FileText, Plus, X, CheckCircle2, Tag } from 'lucide-react';
+import { 
+  CalendarIcon, 
+  Trash2, 
+  ArrowUp, 
+  ArrowRight, 
+  ArrowDown, 
+  Minus,
+  ListTodo, 
+  FileText, 
+  Plus, 
+  X, 
+  CheckCircle2, 
+  Tag, 
+  Archive, 
+  ArchiveRestore, 
+  Flag, 
+  ChevronDown, 
+  AlertTriangle 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
@@ -89,6 +107,12 @@ export function TaskList({
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [detailTagInput, setDetailTagInput] = useState('');
 
+  // Bulk actions and archive filter states
+  const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived' | 'all'>('active');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [isPriorityPopoverOpen, setIsPriorityPopoverOpen] = useState(false);
+
   const handleAddDetailTag = async () => {
     if (!selectedTask || !detailTagInput.trim()) return;
     const currentTags = selectedTask.tags || [];
@@ -124,25 +148,93 @@ export function TaskList({
 
   const bulkMarkCompleted = async () => {
     if (selectedTaskIds.length === 0) return;
-    const promises = selectedTaskIds.map(id => updateTask(id, { status: 'completed' }));
-    await Promise.all(promises);
-    playCompletionChime({ isBulk: true });
-    fireBulkCompletionConfetti();
-    setSelectedTaskIds([]);
+    setIsBulkLoading(true);
+    try {
+      await batchUpdateStatus(selectedTaskIds, 'completed');
+      playCompletionChime({ isBulk: true });
+      fireBulkCompletionConfetti();
+      toast.success(`Completed ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''}! 🎉`);
+      setSelectedTaskIds([]);
+    } catch {
+      toast.error('Failed to update tasks');
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
   const bulkMarkPending = async () => {
     if (selectedTaskIds.length === 0) return;
-    const promises = selectedTaskIds.map(id => updateTask(id, { status: 'pending' }));
-    await Promise.all(promises);
-    setSelectedTaskIds([]);
+    setIsBulkLoading(true);
+    try {
+      await batchUpdateStatus(selectedTaskIds, 'pending');
+      toast.success(`Marked ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''} as pending`);
+      setSelectedTaskIds([]);
+    } catch {
+      toast.error('Failed to update tasks');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkArchive = async () => {
+    if (selectedTaskIds.length === 0) return;
+    setIsBulkLoading(true);
+    const isUnarchiving = archiveFilter === 'archived';
+    const count = selectedTaskIds.length;
+    try {
+      await batchArchiveTasks(selectedTaskIds, !isUnarchiving);
+      toast.success(
+        isUnarchiving 
+          ? `Restored ${count} task${count > 1 ? 's' : ''} to active list` 
+          : `Archived ${count} task${count > 1 ? 's' : ''}`,
+        {
+          action: !isUnarchiving ? {
+            label: 'View Archived',
+            onClick: () => setArchiveFilter('archived'),
+          } : {
+            label: 'View Active',
+            onClick: () => setArchiveFilter('active'),
+          }
+        }
+      );
+      setSelectedTaskIds([]);
+    } catch {
+      toast.error('Failed to update archive status');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkSetPriority = async (priority: Task['priority']) => {
+    if (selectedTaskIds.length === 0) return;
+    setIsBulkLoading(true);
+    const count = selectedTaskIds.length;
+    try {
+      await batchUpdatePriority(selectedTaskIds, priority);
+      toast.success(`Updated priority to ${priority} for ${count} task${count > 1 ? 's' : ''}`);
+      setSelectedTaskIds([]);
+      setIsPriorityPopoverOpen(false);
+    } catch {
+      toast.error('Failed to update task priority');
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
   const bulkDelete = async () => {
     if (selectedTaskIds.length === 0) return;
-    const promises = selectedTaskIds.map(id => deleteTask(id));
-    await Promise.all(promises);
-    setSelectedTaskIds([]);
+    setIsBulkLoading(true);
+    const count = selectedTaskIds.length;
+    try {
+      await batchDeleteTasks(selectedTaskIds);
+      toast.success(`Deleted ${count} task${count > 1 ? 's' : ''}`);
+      setSelectedTaskIds([]);
+      setIsDeleteDialogOpen(false);
+    } catch {
+      toast.error('Failed to delete tasks');
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
   const clearSelection = () => {
@@ -205,8 +297,17 @@ export function TaskList({
     setSelectedTask({ ...selectedTask, notes });
   };
 
+  const activeTasks = tasks.filter(t => !t.isArchived);
+  const archivedTasks = tasks.filter(t => !!t.isArchived);
+
+  const displayedTasks = tasks.filter(t => {
+    if (archiveFilter === 'active') return !t.isArchived;
+    if (archiveFilter === 'archived') return !!t.isArchived;
+    return true;
+  });
+
   // Sort tasks: if prioritizedIds exist, use that order. Otherwise, pending first, then by creation date.
-  const sortedTasks = [...tasks].sort((a, b) => {
+  const sortedTasks = [...displayedTasks].sort((a, b) => {
     if (prioritizedIds && prioritizedIds.length > 0) {
       const indexA = prioritizedIds.indexOf(a.id!);
       const indexB = prioritizedIds.indexOf(b.id!);
@@ -220,20 +321,6 @@ export function TaskList({
     }
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
-
-  if (tasks.length === 0) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="text-center py-12 text-muted-foreground border border-dashed rounded-lg"
-      >
-        No tasks yet. Add one to get started!
-      </motion.div>
-    );
-  }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -271,82 +358,260 @@ export function TaskList({
   };
 
   return (
-    <div className="space-y-3">
-      {sortedTasks.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted/10 border rounded-lg">
-          <div className="flex items-center gap-2">
-            <Checkbox 
-              id="select-all-header"
-              checked={sortedTasks.length > 0 && selectedTaskIds.length === sortedTasks.length}
-              onCheckedChange={(checked) => handleToggleSelectAll(!!checked)}
-            />
-            <label htmlFor="select-all-header" className="cursor-pointer font-medium text-xs select-none">
-              Select All ({sortedTasks.length} tasks)
-            </label>
+    <div className="space-y-3 relative">
+      {/* Header with Active / Archived views and Select All */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3 py-2 text-sm text-muted-foreground bg-muted/15 border rounded-xl">
+        <div className="flex items-center gap-3">
+          {/* Active / Archived View Switcher */}
+          <div className="inline-flex items-center p-0.5 bg-muted/50 rounded-lg text-xs border">
+            <button
+              type="button"
+              onClick={() => { setArchiveFilter('active'); setSelectedTaskIds([]); }}
+              className={cn(
+                "px-2.5 py-1 rounded-md font-medium transition-all text-xs",
+                archiveFilter === 'active' 
+                  ? "bg-background text-foreground shadow-xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Active ({activeTasks.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setArchiveFilter('archived'); setSelectedTaskIds([]); }}
+              className={cn(
+                "px-2.5 py-1 rounded-md font-medium transition-all text-xs flex items-center gap-1.5",
+                archiveFilter === 'archived' 
+                  ? "bg-background text-foreground shadow-xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Archive className="h-3 w-3" />
+              <span>Archived ({archivedTasks.length})</span>
+            </button>
           </div>
-          {selectedTaskIds.length > 0 && (
+
+          <div className="h-4 w-px bg-border hidden sm:block" />
+
+          {/* Select All Checkbox */}
+          {sortedTasks.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="select-all-header"
+                checked={sortedTasks.length > 0 && selectedTaskIds.length === sortedTasks.length}
+                onCheckedChange={(checked) => handleToggleSelectAll(!!checked)}
+              />
+              <label htmlFor="select-all-header" className="cursor-pointer font-medium text-xs select-none">
+                Select All ({sortedTasks.length})
+              </label>
+            </div>
+          )}
+        </div>
+
+        {selectedTaskIds.length > 0 && (
+          <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-primary">
               {selectedTaskIds.length} of {sortedTasks.length} selected
             </span>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
 
+      {/* Floating Bulk Action Toolbar that appears when one or more tasks are selected */}
       <AnimatePresence>
         {selectedTaskIds.length > 0 && (
           <motion.div 
-            initial={{ opacity: 0, height: 0, y: -10 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -10 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: 28, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 420, damping: 30 }}
+            className="sticky bottom-4 z-40 my-1 w-full"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-                  With {selectedTaskIds.length} select{selectedTaskIds.length === 1 ? 'ed' : 'ions'}:
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-card/95 backdrop-blur-md border-2 border-primary/30 rounded-2xl shadow-xl ring-4 ring-primary/10">
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-xs shrink-0">
+                  {selectedTaskIds.length}
                 </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold leading-tight text-foreground">
+                    {selectedTaskIds.length} task{selectedTaskIds.length === 1 ? '' : 's'} selected
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSelectAll(selectedTaskIds.length !== sortedTasks.length)}
+                      className="hover:text-primary transition-colors hover:underline text-left"
+                    >
+                      {selectedTaskIds.length === sortedTasks.length ? 'Deselect all' : `Select all (${sortedTasks.length})`}
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="hover:text-destructive transition-colors hover:underline text-left"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Priority Selection Popover */}
+                <Popover open={isPriorityPopoverOpen} onOpenChange={setIsPriorityPopoverOpen}>
+                  <PopoverTrigger render={
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={isBulkLoading}
+                      className="h-8 text-xs font-medium gap-1.5 border-border hover:bg-muted"
+                    >
+                      <Flag className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Change Priority</span>
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </Button>
+                  } />
+                  <PopoverContent className="w-60 p-2 z-50 bg-background border shadow-lg rounded-xl" align="end">
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b mb-1 flex items-center justify-between">
+                      <span>Change Priority</span>
+                      <Badge variant="secondary" className="text-[10px]">{selectedTaskIds.length} selected</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => bulkSetPriority('high')}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-colors text-left"
+                      >
+                        <span className="flex items-center gap-2 font-medium">
+                          <ArrowUp className="h-3.5 w-3.5 text-red-500" /> High Priority
+                        </span>
+                        <Badge variant="outline" className="text-[10px] bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200">High</Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bulkSetPriority('medium')}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-colors text-left"
+                      >
+                        <span className="flex items-center gap-2 font-medium">
+                          <ArrowRight className="h-3.5 w-3.5 text-amber-500" /> Medium Priority
+                        </span>
+                        <Badge variant="outline" className="text-[10px] bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200">Medium</Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bulkSetPriority('low')}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-colors text-left"
+                      >
+                        <span className="flex items-center gap-2 font-medium">
+                          <ArrowDown className="h-3.5 w-3.5 text-blue-500" /> Low Priority
+                        </span>
+                        <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200">Low</Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bulkSetPriority('unassigned')}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-muted transition-colors text-left"
+                      >
+                        <span className="flex items-center gap-2 font-medium text-muted-foreground">
+                          <Minus className="h-3.5 w-3.5" /> Unassigned
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">None</Badge>
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Batch Archive / Restore */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={bulkArchive}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs font-medium gap-1.5 hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30"
+                  title={archiveFilter === 'archived' ? 'Restore tasks to active list' : 'Archive tasks'}
+                >
+                  {archiveFilter === 'archived' ? (
+                    <>
+                      <ArchiveRestore className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Restore</span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Archive</span>
+                    </>
+                  )}
+                </Button>
+
+                {/* Batch Complete */}
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={bulkMarkCompleted}
-                  className="h-8 text-xs font-medium flex items-center gap-1.5"
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs font-medium gap-1.5 hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/30"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                  Complete
+                  <span>Complete</span>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={bulkMarkPending}
-                  className="h-8 text-xs font-medium flex items-center gap-1.5"
-                >
-                  <ListTodo className="h-3.5 w-3.5 text-blue-500" />
-                  Pending
-                </Button>
+
+                {/* Batch Delete (triggers confirmation dialog) */}
                 <Button 
                   variant="destructive" 
                   size="sm" 
-                  onClick={bulkDelete}
-                  className="h-8 text-xs font-medium flex items-center gap-1.5"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs font-medium gap-1.5"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Delete
+                  <span>Delete</span>
                 </Button>
+
+                {/* Clear selection button */}
                 <Button 
                   variant="ghost" 
-                  size="sm" 
+                  size="icon" 
                   onClick={clearSelection}
-                  className="h-8 px-2 text-xs text-muted-foreground hover:bg-muted"
+                  className="h-8 w-8 text-muted-foreground hover:bg-muted rounded-full"
+                  title="Clear selection"
                 >
-                  Clear Selection
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {sortedTasks.length === 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="text-center py-12 text-muted-foreground border border-dashed rounded-xl p-6"
+        >
+          {archiveFilter === 'archived' ? (
+            <div className="flex flex-col items-center gap-2">
+              <Archive className="h-8 w-8 text-muted-foreground/50" />
+              <p className="font-medium text-sm">No archived tasks</p>
+              <p className="text-xs text-muted-foreground/75">
+                Select tasks from the active list and click Archive to keep your workspace focused.
+              </p>
+            </div>
+          ) : (
+            <p>No tasks yet. Add one to get started!</p>
+          )}
+        </motion.div>
+      )}
 
       <motion.div 
         variants={listContainerVariants}
@@ -454,6 +719,11 @@ export function TaskList({
                   <Badge variant="secondary" className="capitalize text-xs font-normal">
                     {task.category}
                   </Badge>
+                  {task.isArchived && (
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/50 flex items-center gap-1">
+                      <Archive className="w-2.5 h-2.5" /> Archived
+                    </Badge>
+                  )}
                   {task.priority !== 'unassigned' && (
                     <Badge variant="outline" className={`capitalize text-xs font-medium flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
                       <PriorityIcon priority={task.priority} className="w-3 h-3" />
@@ -499,14 +769,35 @@ export function TaskList({
                   </div>
                 )}
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-muted-foreground hover:text-destructive shrink-0"
-                onClick={() => deleteTask(task.id!)}
-              >
-                <Trash2 size={16} />
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-amber-600 transition-colors"
+                  title={task.isArchived ? "Restore task to active list" : "Archive task"}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const willArchive = !task.isArchived;
+                    await updateTask(task.id!, { isArchived: willArchive });
+                    toast.success(willArchive ? "Task archived" : "Task restored to active list");
+                  }}
+                >
+                  {task.isArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                  title="Delete task"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteTask(task.id!);
+                    toast.success("Task deleted");
+                  }}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
             </div>
           </Card>
             </motion.div>
@@ -579,6 +870,32 @@ export function TaskList({
                   <Badge variant="secondary" className="capitalize">
                     {selectedTask.category}
                   </Badge>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Archive State</h4>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const willArchive = !selectedTask.isArchived;
+                      await updateTask(selectedTask.id!, { isArchived: willArchive });
+                      setSelectedTask({ ...selectedTask, isArchived: willArchive });
+                      toast.success(willArchive ? "Task archived" : "Task restored to active");
+                    }}
+                    className="flex items-center gap-1.5 focus:outline-none group"
+                  >
+                    <Badge 
+                      variant={selectedTask.isArchived ? 'outline' : 'secondary'} 
+                      className={cn(
+                        "cursor-pointer transition-all hover:opacity-90 flex items-center gap-1.5",
+                        selectedTask.isArchived ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300" : ""
+                      )}
+                    >
+                      {selectedTask.isArchived ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                      <span>{selectedTask.isArchived ? 'Archived' : 'Active'}</span>
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground group-hover:underline">click to {selectedTask.isArchived ? 'restore' : 'archive'}</span>
+                  </button>
                 </div>
                 
                 <div>
@@ -787,6 +1104,41 @@ export function TaskList({
             </div>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
+              <AlertTriangle className="size-5" />
+            </div>
+            <DialogTitle>Delete {selectedTaskIds.length} tasks?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete the {selectedTaskIds.length} selected task{selectedTaskIds.length === 1 ? '' : 's'}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2.5 mt-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isBulkLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={bulkDelete}
+              disabled={isBulkLoading}
+              className="gap-1.5"
+            >
+              <Trash2 className="size-3.5" />
+              {isBulkLoading ? 'Deleting...' : `Delete ${selectedTaskIds.length} Task${selectedTaskIds.length === 1 ? '' : 's'}`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

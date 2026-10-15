@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, where, onSnapshot, Timestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
 export interface Task {
@@ -13,6 +13,7 @@ export interface Task {
   notes?: string;
   subTasks?: { id: string; title: string; completed: boolean }[];
   tags?: string[];
+  isArchived?: boolean;
 }
 
 export interface Category {
@@ -162,3 +163,60 @@ export const subscribeToCategories = (callback: (categories: Category[]) => void
     handleFirestoreError(error, OperationType.LIST, path);
   });
 };
+
+export const batchDeleteTasks = async (taskIds: string[]) => {
+  if (!taskIds || taskIds.length === 0) return;
+  const path = 'tasks';
+  try {
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+      batch.delete(doc(db, 'tasks', id));
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+export const batchArchiveTasks = async (taskIds: string[], isArchived: boolean = true) => {
+  if (!taskIds || taskIds.length === 0) return;
+  const path = 'tasks';
+  try {
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+      batch.update(doc(db, 'tasks', id), { isArchived });
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const batchUpdatePriority = async (taskIds: string[], priority: Task['priority']) => {
+  if (!taskIds || taskIds.length === 0) return;
+  const path = 'tasks';
+  try {
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+      batch.update(doc(db, 'tasks', id), { priority });
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const batchUpdateStatus = async (taskIds: string[], status: Task['status']) => {
+  if (!taskIds || taskIds.length === 0) return;
+  const path = 'tasks';
+  try {
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+      batch.update(doc(db, 'tasks', id), { status });
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
